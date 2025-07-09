@@ -40,24 +40,30 @@ class WebSocketChat {
         // Chat elements
         this.chatContainer = document.querySelector('.chat-container');
         this.connectionStatus = document.getElementById('connectionStatus');
-        this.currentUserSpan = document.getElementById('currentUser');
         this.currentUserName = document.getElementById('currentUserName');
-        this.userAvatar = document.getElementById('userAvatar');
+        this.welcomeUsername = document.getElementById('welcomeUsername');
         this.chatList = document.getElementById('chatList');
         this.chatTitle = document.getElementById('chatTitle');
         this.chatStatus = document.getElementById('chatStatus');
+        this.chatAvatar = document.getElementById('chatAvatar');
+        this.chatStatusDot = document.getElementById('chatStatusDot');
         this.messagesContainer = document.getElementById('messagesContainer');
         this.messageInput = document.getElementById('messageInput');
         this.sendBtn = document.getElementById('sendBtn');
         this.refreshBtn = document.getElementById('refreshBtn');
         this.settingsBtn = document.getElementById('settingsBtn');
-        this.reconnectToast = document.getElementById('reconnectToast');
-        this.reconnectMessage = document.getElementById('reconnectMessage');
+        this.totalChatsCount = document.getElementById('totalChatsCount');
         
         // Search and filter elements
         this.searchInput = document.getElementById('searchInput');
         this.clearSearchBtn = document.getElementById('clearSearchBtn');
         this.filterTabs = document.querySelectorAll('.filter-tab');
+        
+        // Filter count elements
+        this.allCount = document.getElementById('allCount');
+        this.unreadCount = document.getElementById('unreadCount');
+        this.groupsCount = document.getElementById('groupsCount');
+        this.onlineCount = document.getElementById('onlineCount');
         
         // Settings dropdown
         this.settingsDropdown = document.getElementById('settingsDropdown');
@@ -70,6 +76,7 @@ class WebSocketChat {
         
         // Toast container
         this.toastContainer = document.getElementById('toastContainer');
+        this.notificationToast = document.getElementById('notificationToast');
     }
 
     /**
@@ -79,13 +86,13 @@ class WebSocketChat {
         // Login events
         this.loginBtn.addEventListener('click', () => this.handleLogin());
         this.usernameInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.handleLogin();
+            if (e.key == 'Enter') this.handleLogin();
         });
 
         // Message events
         this.sendBtn.addEventListener('click', () => this.sendMessage());
         this.messageInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.sendMessage();
+            if (e.key == 'Enter') this.sendMessage();
         });
 
         // Search and filter events
@@ -97,7 +104,7 @@ class WebSocketChat {
         });
 
         // Action buttons
-        this.refreshBtn.addEventListener('click', () => this.loadChats());
+        this.refreshBtn.addEventListener('click', () => this.refreshChats());
         this.settingsBtn.addEventListener('click', () => this.toggleSettingsDropdown());
         
         // Settings dropdown actions
@@ -127,7 +134,7 @@ class WebSocketChat {
     initializeDarkMode() {
         // Set dark mode as default
         document.body.classList.add('dark-mode');
-        this.darkModeToggle.innerHTML = '☀️';
+        this.updateDarkModeIcon(true);
     }
 
     /**
@@ -136,10 +143,24 @@ class WebSocketChat {
     toggleDarkMode() {
         document.body.classList.toggle('dark-mode');
         const isDark = document.body.classList.contains('dark-mode');
-        this.darkModeToggle.innerHTML = isDark ? '☀️' : '🌙';
+        this.updateDarkModeIcon(isDark);
         
         // Save preference
         localStorage.setItem('darkMode', isDark);
+    }
+
+    /**
+     * Update dark mode icon
+     */
+    updateDarkModeIcon(isDark) {
+        this.darkModeToggle.innerHTML = isDark ? 
+            `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="5"/>
+                <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+            </svg>` :
+            `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>`;
     }
 
     /**
@@ -199,7 +220,7 @@ class WebSocketChat {
         toast.className = `toast toast-${type}`;
         toast.innerHTML = `
             <div class="toast-content">
-                <span class="toast-icon">${type === 'error' ? '❌' : type === 'success' ? '✅' : 'ℹ️'}</span>
+                <span class="toast-icon">${type == 'error' ? '❌' : type == 'success' ? '✅' : 'ℹ️'}</span>
                 <span class="toast-message">${message}</span>
             </div>
         `;
@@ -218,6 +239,23 @@ class WebSocketChat {
                 }
             }, 300);
         }, 5000);
+    }
+
+    /**
+     * Show notification toast
+     */
+    showNotificationToast(title, message) {
+        const titleEl = this.notificationToast.querySelector('.notification-title');
+        const messageEl = this.notificationToast.querySelector('.notification-message');
+        
+        titleEl.textContent = title;
+        messageEl.textContent = message;
+        
+        this.notificationToast.classList.add('show');
+        
+        setTimeout(() => {
+            this.notificationToast.classList.remove('show');
+        }, 3000);
     }
 
     /**
@@ -243,7 +281,7 @@ class WebSocketChat {
         try {
             // Add connection timeout
             const connectionTimeout = setTimeout(() => {
-                if (this.ws && this.ws.readyState === WebSocket.CONNECTING) {
+                if (this.ws && this.ws.readyState == WebSocket.CONNECTING) {
                     this.ws.close();
                     this.handleConnectionError();
                 }
@@ -276,7 +314,6 @@ class WebSocketChat {
         this.isConnected = true;
         this.reconnectAttempts = 0;
         this.updateConnectionStatus('Connected', true);
-        this.hideReconnectToast();
         
         // Send login message
         this.sendLoginMessage();
@@ -336,7 +373,7 @@ class WebSocketChat {
         }
 
         // Handle login response
-        if (originalData?.action === 'login' || (originalData && originalData.action === 'login')) {
+        if (originalData?.action == 'login' || (originalData && originalData.action == 'login')) {
             this.handleLoginResponse(phpOutput);
         }
         
@@ -368,12 +405,12 @@ class WebSocketChat {
         console.log('Handling login response:', phpOutput);
         
         // Check for successful login in multiple possible response formats
-        const loginSuccess = (phpOutput.login && phpOutput.login.status === 'success') ||
-                           (phpOutput.get_chats && phpOutput.get_chats.status === 'success');
+        const loginSuccess = (phpOutput.login && phpOutput.login.status == 'success') ||
+                           (phpOutput.get_chats && phpOutput.get_chats.status == 'success');
         
         if (loginSuccess) {
             // Get user profile from response
-            if (phpOutput.get_user_profile && phpOutput.get_user_profile.status === 'success') {
+            if (phpOutput.get_user_profile && phpOutput.get_user_profile.status == 'success') {
                 this.userProfile = phpOutput.get_user_profile.user_profile;
                 console.log('User profile loaded:', this.userProfile);
             }
@@ -415,9 +452,10 @@ class WebSocketChat {
     handleChatsResponse(chatsData) {
         console.log('Handling chats response:', chatsData);
         
-        if (chatsData.status === 'success') {
+        if (chatsData.status == 'success') {
             this.chats = chatsData.chats || [];
-           console.log('Loaded chats:', this.chats.length);
+            console.log('Loaded chats:', this.chats.length);
+            this.updateChatCounts();
             this.applyFiltersAndSearch();
         } else {
             console.warn('Failed to load chats:', chatsData);
@@ -431,7 +469,7 @@ class WebSocketChat {
     handleMessagesResponse(messagesData) {
         console.log('Handling messages response:', messagesData);
         
-        if (messagesData.status === 'success') {
+        if (messagesData.status == 'success') {
             this.messages = messagesData.messages || [];
             this.renderMessages();
         } else {
@@ -445,7 +483,7 @@ class WebSocketChat {
     handleSendMessageResponse(sendData) {
         console.log('Handling send message response:', sendData);
         
-        if (sendData.status === 'success') {
+        if (sendData.status == 'success') {
             this.loadMessages();
         } else {
             console.warn('Failed to send message:', sendData);
@@ -462,7 +500,7 @@ class WebSocketChat {
         if (receiverData.receiver_sessions && receiverData.receiver_sessions.length > 0) {
             const session = receiverData.receiver_sessions[0];
             
-            if (session.RoomId === this.currentRoomId) {
+            if (session.RoomId == this.currentRoomId) {
                 this.loadMessages();
             }
             
@@ -476,9 +514,27 @@ class WebSocketChat {
     updateUserInfo() {
         console.log('Updating user info with profile:', this.userProfile);
         const displayName = this.userProfile?.name || this.username;
-        this.currentUserSpan.textContent = this.username;
         this.currentUserName.textContent = displayName;
-        this.userAvatar.textContent = displayName.charAt(0).toUpperCase();
+        this.welcomeUsername.textContent = displayName;
+    }
+
+    /**
+     * Update chat counts
+     */
+    updateChatCounts() {
+        const allCount = this.chats.length;
+        const unreadCount = this.chats.filter(chat => chat.Unread > 0).length;
+        const groupsCount = this.chats.filter(chat => chat.ChatType == 'Group').length;
+        const onlineCount = this.chats.filter(chat => 
+            chat.Status == 'Online' || chat.Status.includes('Online')
+        ).length;
+        
+        this.allCount.textContent = `(${allCount})`;
+        this.unreadCount.textContent = `(${unreadCount})`;
+        this.groupsCount.textContent = `(${groupsCount})`;
+        this.onlineCount.textContent = `(${onlineCount})`;
+        
+        this.totalChatsCount.textContent = `${allCount} conversation${allCount != 1 ? 's' : ''}`;
     }
 
     /**
@@ -487,7 +543,7 @@ class WebSocketChat {
     enableChat() {
         this.messageInput.disabled = false;
         this.sendBtn.disabled = false;
-        this.messageInput.placeholder = 'Type your message...';
+        this.messageInput.placeholder = 'Type a message...';
     }
 
     /**
@@ -503,6 +559,14 @@ class WebSocketChat {
         };
 
         this.sendJSON(chatsData);
+    }
+
+    /**
+     * Refresh chats
+     */
+    refreshChats() {
+        this.loadChats();
+        this.showNotificationToast('Chats Refreshed', 'Chat list has been updated');
     }
 
     /**
@@ -550,7 +614,7 @@ class WebSocketChat {
         
         // Update active tab
         this.filterTabs.forEach(tab => {
-            tab.classList.toggle('active', tab.dataset.filter === filter);
+            tab.classList.toggle('active', tab.dataset.filter == filter);
         });
         
         this.applyFiltersAndSearch();
@@ -563,15 +627,15 @@ class WebSocketChat {
         let filtered = [...this.chats];
         
         // Apply filter
-        if (this.currentFilter !== 'all') {
+        if (this.currentFilter != 'all') {
             filtered = filtered.filter(chat => {
                 switch (this.currentFilter) {
-                    case 'users':
-                        return chat.ChatType === 'Single';
+                    case 'unread':
+                        return chat.Unread > 0;
                     case 'groups':
-                        return chat.ChatType === 'Group';
+                        return chat.ChatType == 'Group';
                     case 'online':
-                        return chat.Status === 'Online' || chat.Status.includes('Online');
+                        return chat.Status == 'Online' || chat.Status.includes('Online');
                     default:
                         return true;
                 }
@@ -596,7 +660,7 @@ class WebSocketChat {
     renderChatList() {
         this.chatList.innerHTML = '';
         
-        if (this.filteredChats.length === 0) {
+        if (this.filteredChats.length == 0) {
             const emptyState = document.createElement('div');
             emptyState.className = 'empty-state';
             emptyState.innerHTML = `
@@ -612,29 +676,31 @@ class WebSocketChat {
             chatItem.className = 'chat-item';
             chatItem.dataset.roomId = chat.RoomId;
             
-            const isOnline = chat.Status === 'Online' || chat.Status.includes('Online');
-            const statusDot = `<div class="status-dot ${isOnline ? 'online' : 'offline'}"></div>`;
+            const isOnline = chat.Status == 'Online' || chat.Status.includes('Online');
+            const statusClass = isOnline ? 'online' : 'offline';
             
-            const unreadCount = chat.Unread > 0 ? 
-                `<div class="unread-count">${chat.Unread}</div>` : '';
+            const unreadBadge = chat.Unread > 0 ? 
+                `<div class="chat-item-unread">${chat.Unread}</div>` : '';
             
             chatItem.innerHTML = `
-                <div class="avatar">
+                <div class="chat-item-avatar">
                     <span>${chat.Name.charAt(0).toUpperCase()}</span>
-                    ${statusDot}
+                    <div class="chat-item-status-dot ${statusClass}"></div>
                 </div>
-                <div class="chat-item-info">
-                    <div class="chat-item-name">${chat.Name}</div>
-                    <div class="chat-item-preview">${chat.MsgTxt}</div>
-                </div>
-                <div class="chat-item-meta">
-                    <div class="chat-item-time">${chat.Status}</div>
-                    ${unreadCount}
+                <div class="chat-item-content">
+                    <div class="chat-item-header">
+                        <div class="chat-item-name">${chat.Name}</div>
+                        <div class="chat-item-time">${this.formatTime(chat.Status)}</div>
+                    </div>
+                    <div class="chat-item-preview">
+                        <span>${chat.MsgTxt || 'No messages yet'}</span>
+                        ${unreadBadge}
+                    </div>
                 </div>
             `;
             
             chatItem.addEventListener('click', () => {
-                this.selectChat(chat.RoomId, chat.Name);
+                this.selectChat(chat.RoomId, chat.Name, isOnline);
             });
             
             this.chatList.appendChild(chatItem);
@@ -642,9 +708,18 @@ class WebSocketChat {
     }
 
     /**
+     * Format time for display
+     */
+    formatTime(timeString) {
+        if (timeString == 'Online') return 'Online';
+        if (timeString.includes('Online')) return 'Online';
+        return timeString;
+    }
+
+    /**
      * Select a chat
      */
-    selectChat(roomId, chatName) {
+    selectChat(roomId, chatName, isOnline = false) {
         this.currentRoomId = roomId;
         this.currentChatName = chatName;
         
@@ -660,24 +735,29 @@ class WebSocketChat {
         
         // Update chat header
         this.chatTitle.textContent = chatName;
-        this.chatStatus.textContent = 'Click to view info';
+        this.chatStatus.textContent = isOnline ? 'Online' : 'Offline';
+        this.chatAvatar.textContent = chatName.charAt(0).toUpperCase();
+        this.chatStatusDot.className = `chat-status-dot ${isOnline ? 'online' : ''}`;
         
         // Load messages for this chat
         this.loadMessages();
         
-        // Clear welcome message
-        this.messagesContainer.innerHTML = '';
+        // Hide welcome screen and show messages
+        this.messagesContainer.innerHTML = '<div class="messages-list" id="messagesList"></div>';
     }
 
     /**
      * Render messages
      */
     renderMessages() {
-        this.messagesContainer.innerHTML = '';
+        const messagesList = document.getElementById('messagesList');
+        if (!messagesList) return;
+        
+        messagesList.innerHTML = '';
         
         this.messages.forEach(message => {
             const messageEl = this.createMessageElement(message);
-            this.messagesContainer.appendChild(messageEl);
+            messagesList.appendChild(messageEl);
         });
         
         this.scrollToBottom();
@@ -688,7 +768,7 @@ class WebSocketChat {
      */
     createMessageElement(message) {
         const messageEl = document.createElement('div');
-        const isOwnMessage = message.User === this.username;
+        const isOwnMessage = message.User == this.username;
         
         messageEl.className = `message ${isOwnMessage ? 'sent' : 'received'}`;
         
@@ -805,17 +885,45 @@ class WebSocketChat {
         
         // Reset filter tabs
         this.filterTabs.forEach(tab => {
-            tab.classList.toggle('active', tab.dataset.filter === 'all');
+            tab.classList.toggle('active', tab.dataset.filter == 'all');
         });
         
         this.disableChat();
+        this.resetWelcomeScreen();
+    }
+
+    /**
+     * Reset welcome screen
+     */
+    resetWelcomeScreen() {
+        this.messagesContainer.innerHTML = `
+            <div class="welcome-screen">
+                <div class="welcome-icon">💬</div>
+                <h3>Welcome to Nimble Chat</h3>
+                <p>Hi <span id="welcomeUsername"></span>! Select a conversation to start chatting</p>
+                <div class="connection-info">
+                    <div class="connection-indicator">
+                        <span class="connection-dot"></span>
+                        <span>Connected</span>
+                    </div>
+                    <div class="chat-count">
+                        <span class="chat-count-icon">👥</span>
+                        <span id="totalChatsCount">0 conversations</span>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Re-initialize elements
+        this.welcomeUsername = document.getElementById('welcomeUsername');
+        this.totalChatsCount = document.getElementById('totalChatsCount');
     }
 
     /**
      * Send JSON data through WebSocket
      */
     sendJSON(data) {
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        if (this.ws && this.ws.readyState == WebSocket.OPEN) {
             this.ws.send(JSON.stringify(data));
             console.log('Sent:', data);
         } else {
@@ -859,14 +967,14 @@ class WebSocketChat {
      */
     attemptReconnect() {
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-            this.showReconnectToast('Maximum reconnection attempts reached');
+            this.showToast('Maximum reconnection attempts reached', 'error');
             return;
         }
 
         this.reconnectAttempts++;
         const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
         
-        this.showReconnectToast(`Reconnecting in ${delay / 1000} seconds... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+        this.showToast(`Reconnecting in ${delay / 1000} seconds... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`, 'warning');
         
         setTimeout(() => {
             if (!this.isConnected) {
@@ -892,21 +1000,6 @@ class WebSocketChat {
     }
 
     /**
-     * Show reconnect toast
-     */
-    showReconnectToast(message) {
-        this.reconnectMessage.textContent = message;
-        this.reconnectToast.classList.add('show');
-    }
-
-    /**
-     * Hide reconnect toast
-     */
-    hideReconnectToast() {
-        this.reconnectToast.classList.remove('show');
-    }
-
-    /**
      * Disable chat functionality
      */
     disableChat() {
@@ -919,7 +1012,10 @@ class WebSocketChat {
      * Scroll messages to bottom
      */
     scrollToBottom() {
-        this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+        const messagesList = document.getElementById('messagesList');
+        if (messagesList) {
+            messagesList.scrollTop = messagesList.scrollHeight;
+        }
     }
 
     /**

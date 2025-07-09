@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebSocket Chat</title>
+    <title>Nimble Chat</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="dark-mode">
@@ -11,7 +11,13 @@
         <!-- Login Modal -->
         <div id="loginModal" class="modal">
             <div class="modal-content">
-                <h2>Join Chat</h2>
+                <div class="login-header">
+                    <div class="login-logo">
+                        <div class="logo-icon">💬</div>
+                        <h2>Nimble Chat</h2>
+                    </div>
+                    <p class="login-subtitle">Connect to start chatting</p>
+                </div>
                 <div class="form-group">
                     <label for="usernameInput">Username</label>
                     <input type="text" id="usernameInput" placeholder="Enter your username" required>
@@ -26,58 +32,93 @@
             <!-- Sidebar -->
             <div class="sidebar">
                 <div class="sidebar-header">
-                    <div class="header-left">
-                        <h3>Chats</h3>
-                        <div class="connection-status" id="connectionStatus">
-                            <span class="status-dot"></span>
-                            <span class="status-text">Connecting...</span>
-                        </div>
-                    </div>
-                    <div class="header-actions">
-                        <button id="darkModeToggle" class="btn btn-icon" title="Toggle Dark Mode">☀️</button>
-                        <button id="refreshBtn" class="btn btn-icon" title="Refresh Chats">↻</button>
-                        <div class="settings-container">
-                            <button id="settingsBtn" class="btn btn-icon" title="Settings">⚙️</button>
-                            <div id="settingsDropdown" class="settings-dropdown">
-                                <button id="newGroupBtn" class="dropdown-item">
-                                    <span class="dropdown-icon">👥</span>
-                                    New Group
+                    <div class="app-title">
+                        <h3>Nimble Chat</h3>
+                        <div class="header-icons">
+                            <button id="refreshBtn" class="icon-btn" title="Refresh">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                                    <path d="M21 3v5h-5"/>
+                                    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                                    <path d="M3 21v-5h5"/>
+                                </svg>
+                            </button>
+                            <button id="darkModeToggle" class="icon-btn" title="Toggle Theme">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="5"/>
+                                    <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+                                </svg>
+                            </button>
+                            <div class="settings-container">
+                                <button id="settingsBtn" class="icon-btn" title="Settings">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="3"/>
+                                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                                    </svg>
                                 </button>
-                                <button id="activeSessionsBtn" class="dropdown-item">
-                                    <span class="dropdown-icon">📱</span>
-                                    Active Sessions
-                                </button>
-                                <button id="logoutBtn" class="dropdown-item">
-                                    <span class="dropdown-icon">🚪</span>
-                                    Logout
-                                </button>
+                                <div id="settingsDropdown" class="settings-dropdown">
+                                    <button id="newGroupBtn" class="dropdown-item">
+                                        <span class="dropdown-icon">👥</span>
+                                        New Group
+                                    </button>
+                                    <button id="activeSessionsBtn" class="dropdown-item">
+                                        <span class="dropdown-icon">📱</span>
+                                        Active Sessions
+                                    </button>
+                                    <button id="logoutBtn" class="dropdown-item">
+                                        <span class="dropdown-icon">🚪</span>
+                                        Logout
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
                 
                 <div class="user-info">
-                    <div class="avatar">
-                        <span id="userAvatar"></span>
-                    </div>
                     <div class="user-details">
-                        <span id="currentUserName"></span>
-                        <span id="currentUser" class="user-username"></span>
+                        <span class="user-label">User:</span>
+                        <span id="currentUserName" class="user-name"></span>
+                    </div>
+                    <div class="connection-status" id="connectionStatus">
+                        <span class="status-label">Status:</span>
+                        <div class="status-indicator">
+                            <span class="status-dot"></span>
+                            <span class="status-text">Connecting...</span>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Search and Filters -->
+                <!-- Search -->
                 <div class="search-container">
                     <div class="search-input-container">
+                        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"/>
+                            <path d="m21 21-4.35-4.35"/>
+                        </svg>
                         <input type="text" id="searchInput" placeholder="Search conversations..." class="search-input">
                         <button id="clearSearchBtn" class="clear-search-btn">×</button>
                     </div>
-                    <div class="filter-tabs">
-                        <button class="filter-tab active" data-filter="all">All</button>
-                        <button class="filter-tab" data-filter="users">Users</button>
-                        <button class="filter-tab" data-filter="groups">Groups</button>
-                        <button class="filter-tab" data-filter="online">Online</button>
-                    </div>
+                </div>
+
+                <!-- Filter Tabs -->
+                <div class="filter-tabs">
+                    <button class="filter-tab active" data-filter="all">
+                        <span class="tab-text">All</span>
+                        <span class="tab-count" id="allCount">(0)</span>
+                    </button>
+                    <button class="filter-tab" data-filter="unread">
+                        <span class="tab-text">Unread</span>
+                        <span class="tab-count" id="unreadCount">(0)</span>
+                    </button>
+                    <button class="filter-tab" data-filter="groups">
+                        <span class="tab-text">Groups</span>
+                        <span class="tab-count" id="groupsCount">(0)</span>
+                    </button>
+                    <button class="filter-tab" data-filter="online">
+                        <span class="tab-text">Online</span>
+                        <span class="tab-count" id="onlineCount">(0)</span>
+                    </button>
                 </div>
 
                 <div class="chat-list" id="chatList">
@@ -87,39 +128,64 @@
 
             <!-- Main Chat Area -->
             <div class="main-chat">
-                <div class="chat-header">
+                <div class="chat-header" id="chatHeader">
                     <div class="chat-info">
-                        <h3 id="chatTitle">Select a chat</h3>
-                        <span id="chatStatus" class="chat-status"></span>
+                        <div class="chat-avatar">
+                            <span id="chatAvatar"></span>
+                            <div class="chat-status-dot" id="chatStatusDot"></div>
+                        </div>
+                        <div class="chat-details">
+                            <h3 id="chatTitle">Select a chat</h3>
+                            <span id="chatStatus" class="chat-status-text">Choose a conversation to start messaging</span>
+                        </div>
                     </div>
                 </div>
 
                 <div class="messages-container" id="messagesContainer">
-                    <div class="welcome-message">
-                        <h4>Welcome to WebSocket Chat!</h4>
-                        <p>Select a chat from the sidebar to start messaging</p>
+                    <div class="welcome-screen">
+                        <div class="welcome-icon">💬</div>
+                        <h3>Welcome to Nimble Chat</h3>
+                        <p>Hi <span id="welcomeUsername"></span>! Select a conversation to start chatting</p>
+                        <div class="connection-info">
+                            <div class="connection-indicator">
+                                <span class="connection-dot"></span>
+                                <span>Connected</span>
+                            </div>
+                            <div class="chat-count">
+                                <span class="chat-count-icon">👥</span>
+                                <span id="totalChatsCount">0 conversations</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <div class="message-input-container">
-                    <div class="input-group">
-                        <input type="text" id="messageInput" placeholder="Type your message..." disabled>
-                        <button id="sendBtn" class="btn btn-send" disabled>Send</button>
+                    <div class="input-wrapper">
+                        <input type="text" id="messageInput" placeholder="Type a message..." disabled>
+                        <button id="sendBtn" class="send-btn" disabled>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 2L11 13"/>
+                                <path d="M22 2l-7 20-4-9-9-4 20-7z"/>
+                            </svg>
+                        </button>
                     </div>
                 </div>
-            </div>
-        </div>
-
-        <!-- Reconnection Toast -->
-        <div id="reconnectToast" class="toast">
-            <div class="toast-content">
-                <span class="toast-icon">⚠️</span>
-                <span id="reconnectMessage">Reconnecting...</span>
             </div>
         </div>
 
         <!-- Toast Container -->
         <div id="toastContainer" class="toast-container"></div>
+        
+        <!-- Notification Toast -->
+        <div id="notificationToast" class="notification-toast">
+            <div class="notification-content">
+                <span class="notification-icon">✅</span>
+                <div class="notification-text">
+                    <div class="notification-title">Chats Refreshed</div>
+                    <div class="notification-message">Chat list has been updated</div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="app.js"></script>
