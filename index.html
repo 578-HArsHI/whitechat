@@ -6,7 +6,7 @@
     <title>WebSocket Chat</title>
     <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="dark-mode">
     <div class="app-container">
         <!-- Login Modal -->
         <div id="loginModal" class="modal">
@@ -26,21 +26,60 @@
             <!-- Sidebar -->
             <div class="sidebar">
                 <div class="sidebar-header">
-                    <h3>Chats</h3>
-                    <div class="connection-status" id="connectionStatus">
-                        <span class="status-dot"></span>
-                        <span class="status-text">Connecting...</span>
+                    <div class="header-left">
+                        <h3>Chats</h3>
+                        <div class="connection-status" id="connectionStatus">
+                            <span class="status-dot"></span>
+                            <span class="status-text">Connecting...</span>
+                        </div>
+                    </div>
+                    <div class="header-actions">
+                        <button id="darkModeToggle" class="btn btn-icon" title="Toggle Dark Mode">☀️</button>
+                        <button id="refreshBtn" class="btn btn-icon" title="Refresh Chats">↻</button>
+                        <div class="settings-container">
+                            <button id="settingsBtn" class="btn btn-icon" title="Settings">⚙️</button>
+                            <div id="settingsDropdown" class="settings-dropdown">
+                                <button id="newGroupBtn" class="dropdown-item">
+                                    <span class="dropdown-icon">👥</span>
+                                    New Group
+                                </button>
+                                <button id="activeSessionsBtn" class="dropdown-item">
+                                    <span class="dropdown-icon">📱</span>
+                                    Active Sessions
+                                </button>
+                                <button id="logoutBtn" class="dropdown-item">
+                                    <span class="dropdown-icon">🚪</span>
+                                    Logout
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
+                
                 <div class="user-info">
                     <div class="avatar">
                         <span id="userAvatar"></span>
                     </div>
                     <div class="user-details">
-                        <span id="currentUser"></span>
-                        <span class="user-status">Online</span>
+                        <span id="currentUserName"></span>
+                        <span id="currentUser" class="user-username"></span>
                     </div>
                 </div>
+
+                <!-- Search and Filters -->
+                <div class="search-container">
+                    <div class="search-input-container">
+                        <input type="text" id="searchInput" placeholder="Search conversations..." class="search-input">
+                        <button id="clearSearchBtn" class="clear-search-btn">×</button>
+                    </div>
+                    <div class="filter-tabs">
+                        <button class="filter-tab active" data-filter="all">All</button>
+                        <button class="filter-tab" data-filter="users">Users</button>
+                        <button class="filter-tab" data-filter="groups">Groups</button>
+                        <button class="filter-tab" data-filter="online">Online</button>
+                    </div>
+                </div>
+
                 <div class="chat-list" id="chatList">
                     <!-- Chat items will be populated here -->
                 </div>
@@ -52,9 +91,6 @@
                     <div class="chat-info">
                         <h3 id="chatTitle">Select a chat</h3>
                         <span id="chatStatus" class="chat-status"></span>
-                    </div>
-                    <div class="chat-actions">
-                        <button id="refreshBtn" class="btn btn-icon">↻</button>
                     </div>
                 </div>
 
@@ -81,6 +117,9 @@
                 <span id="reconnectMessage">Reconnecting...</span>
             </div>
         </div>
+
+        <!-- Toast Container -->
+        <div id="toastContainer" class="toast-container"></div>
     </div>
 
     <script src="app.js"></script>

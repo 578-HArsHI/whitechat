@@ -7,6 +7,7 @@ class WebSocketChat {
     constructor() {
         this.ws = null;
         this.username = '';
+        this.userProfile = null;
         this.sessionId = '';
         this.currentRoomId = '';
         this.currentChatName = '';
@@ -15,10 +16,14 @@ class WebSocketChat {
         this.maxReconnectAttempts = 5;
         this.reconnectDelay = 1000;
         this.chats = [];
+        this.filteredChats = [];
         this.messages = [];
+        this.currentFilter = 'all';
+        this.searchQuery = '';
         
         this.initializeElements();
         this.attachEventListeners();
+        this.initializeDarkMode();
         this.showLoginModal();
     }
 
@@ -36,6 +41,7 @@ class WebSocketChat {
         this.chatContainer = document.querySelector('.chat-container');
         this.connectionStatus = document.getElementById('connectionStatus');
         this.currentUserSpan = document.getElementById('currentUser');
+        this.currentUserName = document.getElementById('currentUserName');
         this.userAvatar = document.getElementById('userAvatar');
         this.chatList = document.getElementById('chatList');
         this.chatTitle = document.getElementById('chatTitle');
@@ -44,8 +50,26 @@ class WebSocketChat {
         this.messageInput = document.getElementById('messageInput');
         this.sendBtn = document.getElementById('sendBtn');
         this.refreshBtn = document.getElementById('refreshBtn');
+        this.settingsBtn = document.getElementById('settingsBtn');
         this.reconnectToast = document.getElementById('reconnectToast');
         this.reconnectMessage = document.getElementById('reconnectMessage');
+        
+        // Search and filter elements
+        this.searchInput = document.getElementById('searchInput');
+        this.clearSearchBtn = document.getElementById('clearSearchBtn');
+        this.filterTabs = document.querySelectorAll('.filter-tab');
+        
+        // Settings dropdown
+        this.settingsDropdown = document.getElementById('settingsDropdown');
+        this.newGroupBtn = document.getElementById('newGroupBtn');
+        this.activeSessionsBtn = document.getElementById('activeSessionsBtn');
+        this.logoutBtn = document.getElementById('logoutBtn');
+        
+        // Dark mode toggle
+        this.darkModeToggle = document.getElementById('darkModeToggle');
+        
+        // Toast container
+        this.toastContainer = document.getElementById('toastContainer');
     }
 
     /**
@@ -64,8 +88,32 @@ class WebSocketChat {
             if (e.key === 'Enter') this.sendMessage();
         });
 
-        // Refresh button
+        // Search and filter events
+        this.searchInput.addEventListener('input', (e) => this.handleSearch(e.target.value));
+        this.clearSearchBtn.addEventListener('click', () => this.clearSearch());
+        
+        this.filterTabs.forEach(tab => {
+            tab.addEventListener('click', () => this.handleFilterChange(tab.dataset.filter));
+        });
+
+        // Action buttons
         this.refreshBtn.addEventListener('click', () => this.loadChats());
+        this.settingsBtn.addEventListener('click', () => this.toggleSettingsDropdown());
+        
+        // Settings dropdown actions
+        this.newGroupBtn.addEventListener('click', () => this.handleNewGroup());
+        this.activeSessionsBtn.addEventListener('click', () => this.handleActiveSessions());
+        this.logoutBtn.addEventListener('click', () => this.handleLogout());
+        
+        // Dark mode toggle
+        this.darkModeToggle.addEventListener('click', () => this.toggleDarkMode());
+
+        // Close settings dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!this.settingsBtn.contains(e.target) && !this.settingsDropdown.contains(e.target)) {
+                this.settingsDropdown.classList.remove('show');
+            }
+        });
 
         // Window events
         window.addEventListener('beforeunload', () => {
@@ -74,11 +122,33 @@ class WebSocketChat {
     }
 
     /**
+     * Initialize dark mode
+     */
+    initializeDarkMode() {
+        // Set dark mode as default
+        document.body.classList.add('dark-mode');
+        this.darkModeToggle.innerHTML = '☀️';
+    }
+
+    /**
+     * Toggle dark mode
+     */
+    toggleDarkMode() {
+        document.body.classList.toggle('dark-mode');
+        const isDark = document.body.classList.contains('dark-mode');
+        this.darkModeToggle.innerHTML = isDark ? '☀️' : '🌙';
+        
+        // Save preference
+        localStorage.setItem('darkMode', isDark);
+    }
+
+    /**
      * Show login modal
      */
     showLoginModal() {
         this.loginModal.style.display = 'flex';
         this.usernameInput.focus();
+        this.chatContainer.style.display = 'none';
     }
 
     /**
@@ -86,6 +156,7 @@ class WebSocketChat {
      */
     hideLoginModal() {
         this.loginModal.style.display = 'none';
+        this.chatContainer.style.display = 'flex';
     }
 
     /**
@@ -113,6 +184,35 @@ class WebSocketChat {
      */
     showLoginError(message) {
         this.loginError.textContent = message;
+    }
+
+    /**
+     * Show toast notification
+     */
+    showToast(message, type = 'error') {
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.innerHTML = `
+            <div class="toast-content">
+                <span class="toast-icon">${type === 'error' ? '❌' : type === 'success' ? '✅' : 'ℹ️'}</span>
+                <span class="toast-message">${message}</span>
+            </div>
+        `;
+        
+        this.toastContainer.appendChild(toast);
+        
+        // Show toast
+        setTimeout(() => toast.classList.add('show'), 100);
+        
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 300);
+        }, 5000);
     }
 
     /**
@@ -171,7 +271,7 @@ class WebSocketChat {
             action: 'login',
             username: this.username,
             sessionid: this.sessionId,
-            deviceip: '127.0.0.1', // Default IP for local testing
+            deviceip: '127.0.0.1',
             batchId: this.generateBatchId(),
             requestId: this.generateBatchId()
         };
@@ -233,12 +333,20 @@ class WebSocketChat {
      */
     handleLoginResponse(phpOutput) {
         if (phpOutput.login?.status === 'success') {
+            // Get user profile from response
+            if (phpOutput.get_user_profile?.status === 'success') {
+                this.userProfile = phpOutput.get_user_profile.user_profile;
+            }
+            
             this.hideLoginModal();
             this.updateUserInfo();
             this.enableChat();
             this.loadChats();
+            this.showToast('Login successful!', 'success');
         } else {
-            this.handleLoginError(phpOutput.login?.message || 'Login failed');
+            const errorMessage = phpOutput.login?.message || 'Login failed';
+            this.handleLoginError(errorMessage);
+            this.showToast(errorMessage, 'error');
         }
     }
 
@@ -257,7 +365,7 @@ class WebSocketChat {
     handleChatsResponse(chatsData) {
         if (chatsData.status === 'success') {
             this.chats = chatsData.chats || [];
-            this.renderChatList();
+            this.applyFiltersAndSearch();
         }
     }
 
@@ -276,7 +384,6 @@ class WebSocketChat {
      */
     handleSendMessageResponse(sendData) {
         if (sendData.status === 'success') {
-            // Message sent successfully, reload messages
             this.loadMessages();
         }
     }
@@ -288,12 +395,10 @@ class WebSocketChat {
         if (receiverData.receiver_sessions && receiverData.receiver_sessions.length > 0) {
             const session = receiverData.receiver_sessions[0];
             
-            // If this is for the current room, reload messages
             if (session.RoomId === this.currentRoomId) {
                 this.loadMessages();
             }
             
-            // Update chat list to show new message
             this.loadChats();
         }
     }
@@ -302,8 +407,10 @@ class WebSocketChat {
      * Update user info in UI
      */
     updateUserInfo() {
+        const displayName = this.userProfile?.name || this.username;
         this.currentUserSpan.textContent = this.username;
-        this.userAvatar.textContent = this.username.charAt(0).toUpperCase();
+        this.currentUserName.textContent = displayName;
+        this.userAvatar.textContent = displayName.charAt(0).toUpperCase();
     }
 
     /**
@@ -349,15 +456,96 @@ class WebSocketChat {
     }
 
     /**
+     * Handle search input
+     */
+    handleSearch(query) {
+        this.searchQuery = query.toLowerCase();
+        this.clearSearchBtn.style.display = query ? 'block' : 'none';
+        this.applyFiltersAndSearch();
+    }
+
+    /**
+     * Clear search
+     */
+    clearSearch() {
+        this.searchInput.value = '';
+        this.searchQuery = '';
+        this.clearSearchBtn.style.display = 'none';
+        this.applyFiltersAndSearch();
+    }
+
+    /**
+     * Handle filter change
+     */
+    handleFilterChange(filter) {
+        this.currentFilter = filter;
+        
+        // Update active tab
+        this.filterTabs.forEach(tab => {
+            tab.classList.toggle('active', tab.dataset.filter === filter);
+        });
+        
+        this.applyFiltersAndSearch();
+    }
+
+    /**
+     * Apply filters and search
+     */
+    applyFiltersAndSearch() {
+        let filtered = [...this.chats];
+        
+        // Apply filter
+        if (this.currentFilter !== 'all') {
+            filtered = filtered.filter(chat => {
+                switch (this.currentFilter) {
+                    case 'users':
+                        return chat.ChatType === 'Single';
+                    case 'groups':
+                        return chat.ChatType === 'Group';
+                    case 'online':
+                        return chat.Status === 'Online' || chat.Status.includes('Online');
+                    default:
+                        return true;
+                }
+            });
+        }
+        
+        // Apply search
+        if (this.searchQuery) {
+            filtered = filtered.filter(chat => 
+                chat.Name.toLowerCase().includes(this.searchQuery) ||
+                chat.MsgTxt.toLowerCase().includes(this.searchQuery)
+            );
+        }
+        
+        this.filteredChats = filtered;
+        this.renderChatList();
+    }
+
+    /**
      * Render chat list
      */
     renderChatList() {
         this.chatList.innerHTML = '';
         
-        this.chats.forEach(chat => {
+        if (this.filteredChats.length === 0) {
+            const emptyState = document.createElement('div');
+            emptyState.className = 'empty-state';
+            emptyState.innerHTML = `
+                <p>No chats found</p>
+                <small>${this.searchQuery ? 'Try a different search term' : 'Start a conversation'}</small>
+            `;
+            this.chatList.appendChild(emptyState);
+            return;
+        }
+        
+        this.filteredChats.forEach(chat => {
             const chatItem = document.createElement('div');
             chatItem.className = 'chat-item';
             chatItem.dataset.roomId = chat.RoomId;
+            
+            const isOnline = chat.Status === 'Online' || chat.Status.includes('Online');
+            const statusDot = `<div class="status-dot ${isOnline ? 'online' : 'offline'}"></div>`;
             
             const unreadCount = chat.Unread > 0 ? 
                 `<div class="unread-count">${chat.Unread}</div>` : '';
@@ -365,6 +553,7 @@ class WebSocketChat {
             chatItem.innerHTML = `
                 <div class="avatar">
                     <span>${chat.Name.charAt(0).toUpperCase()}</span>
+                    ${statusDot}
                 </div>
                 <div class="chat-item-info">
                     <div class="chat-item-name">${chat.Name}</div>
@@ -423,7 +612,6 @@ class WebSocketChat {
             this.messagesContainer.appendChild(messageEl);
         });
         
-        // Scroll to bottom
         this.scrollToBottom();
     }
 
@@ -474,6 +662,85 @@ class WebSocketChat {
         
         this.sendJSON(messageData);
         this.messageInput.value = '';
+    }
+
+    /**
+     * Toggle settings dropdown
+     */
+    toggleSettingsDropdown() {
+        this.settingsDropdown.classList.toggle('show');
+    }
+
+    /**
+     * Handle new group action
+     */
+    handleNewGroup() {
+        this.settingsDropdown.classList.remove('show');
+        this.showToast('New group feature coming soon!', 'info');
+    }
+
+    /**
+     * Handle active sessions action
+     */
+    handleActiveSessions() {
+        this.settingsDropdown.classList.remove('show');
+        this.showToast('Active sessions feature coming soon!', 'info');
+    }
+
+    /**
+     * Handle logout
+     */
+    handleLogout() {
+        this.settingsDropdown.classList.remove('show');
+        
+        // Send logout request
+        const logoutData = {
+            action: 'logout',
+            username: this.username,
+            sessionid: this.sessionId,
+            deviceip: '127.0.0.1',
+            batchId: this.generateBatchId(),
+            requestId: this.generateBatchId()
+        };
+        
+        this.sendJSON(logoutData);
+        
+        // Disconnect and reset
+        this.disconnect();
+        this.resetApplication();
+        this.showLoginModal();
+        this.showToast('Logged out successfully', 'success');
+    }
+
+    /**
+     * Reset application state
+     */
+    resetApplication() {
+        this.username = '';
+        this.userProfile = null;
+        this.sessionId = '';
+        this.currentRoomId = '';
+        this.currentChatName = '';
+        this.chats = [];
+        this.filteredChats = [];
+        this.messages = [];
+        this.searchQuery = '';
+        this.currentFilter = 'all';
+        
+        // Reset UI
+        this.usernameInput.value = '';
+        this.loginBtn.disabled = false;
+        this.loginBtn.textContent = 'Connect';
+        this.loginError.textContent = '';
+        this.searchInput.value = '';
+        this.clearSearchBtn.style.display = 'none';
+        
+        // Reset filter tabs
+        this.filterTabs.forEach(tab => {
+            tab.classList.toggle('active', tab.dataset.filter === 'all');
+        });
+        
+        this.disableChat();
     }
 
     /**
