@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Chat</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Login Modal -->
+        <div id="loginModal" class="modal">
+            <div class="modal-content">
+                <h2>Join Chat</h2>
+                <div class="form-group">
+                    <label for="usernameInput">Username</label>
+                    <input type="text" id="usernameInput" placeholder="Enter your username" required>
+                </div>
+                <button id="loginBtn" class="btn btn-primary">Connect</button>
+                <div id="loginError" class="error-message"></div>
+            </div>
+        </div>
+
+        <!-- Main Chat Interface -->
+        <div class="chat-container">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div class="sidebar-header">
+                    <h3>Chats</h3>
+                    <div class="connection-status" id="connectionStatus">
+                        <span class="status-dot"></span>
+                        <span class="status-text">Connecting...</span>
+                    </div>
+                </div>
+                <div class="user-info">
+                    <div class="avatar">
+                        <span id="userAvatar"></span>
+                    </div>
+                    <div class="user-details">
+                        <span id="currentUser"></span>
+                        <span class="user-status">Online</span>
+                    </div>
+                </div>
+                <div class="chat-list" id="chatList">
+                    <!-- Chat items will be populated here -->
+                </div>
+            </div>
+
+            <!-- Main Chat Area -->
+            <div class="main-chat">
+                <div class="chat-header">
+                    <div class="chat-info">
+                        <h3 id="chatTitle">Select a chat</h3>
+                        <span id="chatStatus" class="chat-status"></span>
+                    </div>
+                    <div class="chat-actions">
+                        <button id="refreshBtn" class="btn btn-icon">↻</button>
+                    </div>
+                </div>
+
+                <div class="messages-container" id="messagesContainer">
+                    <div class="welcome-message">
+                        <h4>Welcome to WebSocket Chat!</h4>
+                        <p>Select a chat from the sidebar to start messaging</p>
+                    </div>
+                </div>
+
+                <div class="message-input-container">
+                    <div class="input-group">
+                        <input type="text" id="messageInput" placeholder="Type your message..." disabled>
+                        <button id="sendBtn" class="btn btn-send" disabled>Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reconnection Toast -->
+        <div id="reconnectToast" class="toast">
+            <div class="toast-content">
+                <span class="toast-icon">⚠️</span>
+                <span id="reconnectMessage">Reconnecting...</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
