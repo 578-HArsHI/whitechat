@@ -155,8 +155,13 @@ class WebSocketChat {
      * Hide login modal
      */
     hideLoginModal() {
+        console.log('Hiding login modal');
         this.loginModal.style.display = 'none';
         this.chatContainer.style.display = 'flex';
+        
+        // Reset login button state
+        this.loginBtn.disabled = false;
+        this.loginBtn.textContent = 'Connect';
     }
 
     /**
@@ -362,7 +367,11 @@ class WebSocketChat {
     handleLoginResponse(phpOutput) {
         console.log('Handling login response:', phpOutput);
         
-        if (phpOutput.login && phpOutput.login.status === 'success') {
+        // Check for successful login in multiple possible response formats
+        const loginSuccess = (phpOutput.login && phpOutput.login.status === 'success') ||
+                           (phpOutput.get_chats && phpOutput.get_chats.status === 'success');
+        
+        if (loginSuccess) {
             // Get user profile from response
             if (phpOutput.get_user_profile && phpOutput.get_user_profile.status === 'success') {
                 this.userProfile = phpOutput.get_user_profile.user_profile;
@@ -373,7 +382,14 @@ class WebSocketChat {
             this.hideLoginModal();
             this.updateUserInfo();
             this.enableChat();
-            this.loadChats();
+            
+            // If we already have chats in the response, use them
+            if (phpOutput.get_chats) {
+                this.handleChatsResponse(phpOutput.get_chats);
+            } else {
+                this.loadChats();
+            }
+            
             this.showToast('Login successful!', 'success');
         } else {
             const errorMessage = (phpOutput.login && phpOutput.login.message) || 'Login failed';
@@ -390,6 +406,7 @@ class WebSocketChat {
         this.showLoginError(message);
         this.loginBtn.disabled = false;
         this.loginBtn.textContent = 'Connect';
+        this.updateConnectionStatus('Connection Error', false);
     }
 
     /**
