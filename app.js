@@ -236,11 +236,25 @@ class WebSocketChat {
         this.updateConnectionStatus('Connecting...', false);
         
         try {
+            // Add connection timeout
+            const connectionTimeout = setTimeout(() => {
+                if (this.ws && this.ws.readyState === WebSocket.CONNECTING) {
+                    this.ws.close();
+                    this.handleConnectionError();
+                }
+            }, 10000); // 10 second timeout
+            
             this.ws = new WebSocket('ws://localhost:3000');
             
-            this.ws.onopen = () => this.handleConnect();
+            this.ws.onopen = () => {
+                clearTimeout(connectionTimeout);
+                this.handleConnect();
+            };
             this.ws.onmessage = (event) => this.handleMessage(event);
-            this.ws.onclose = () => this.handleDisconnect();
+            this.ws.onclose = () => {
+                clearTimeout(connectionTimeout);
+                this.handleDisconnect();
+            };
             this.ws.onerror = (error) => this.handleError(error);
             
         } catch (error) {
@@ -287,10 +301,19 @@ class WebSocketChat {
             const data = JSON.parse(event.data);
             console.log('Received message:', data);
             
-            this.handleServerResponse(data);
+            // Check if we have a valid response structure
+            if (data && (data.phpOutput || data.status)) {
+                this.handleServerResponse(data);
+            } else {
+                console.warn('Invalid response structure:', data);
+            }
             
         } catch (error) {
-            console.error('Error parsing message:', error);
+            console.error('Error parsing message:', error, 'Raw data:', event.data);
+            // Try to handle non-JSON responses
+            if (event.data) {
+                console.log('Raw message received:', event.data);
+            }
         }
     }
 
@@ -298,12 +321,17 @@ class WebSocketChat {
      * Handle server response
      */
     handleServerResponse(data) {
-        const { phpOutput, originalData } = data;
+        console.log('Processing server response:', data);
         
-        if (!phpOutput) return;
+        const { phpOutput, originalData, status } = data;
+        
+        if (!phpOutput) {
+            console.warn('No phpOutput in response:', data);
+            return;
+        }
 
         // Handle login response
-        if (originalData?.action === 'login') {
+        if (originalData?.action === 'login' || (originalData && originalData.action === 'login')) {
             this.handleLoginResponse(phpOutput);
         }
         
@@ -332,19 +360,24 @@ class WebSocketChat {
      * Handle login response
      */
     handleLoginResponse(phpOutput) {
-        if (phpOutput.login?.status === 'success') {
+        console.log('Handling login response:', phpOutput);
+        
+        if (phpOutput.login && phpOutput.login.status === 'success') {
             // Get user profile from response
-            if (phpOutput.get_user_profile?.status === 'success') {
+            if (phpOutput.get_user_profile && phpOutput.get_user_profile.status === 'success') {
                 this.userProfile = phpOutput.get_user_profile.user_profile;
+                console.log('User profile loaded:', this.userProfile);
             }
             
+            console.log('Login successful, hiding modal and enabling chat');
             this.hideLoginModal();
             this.updateUserInfo();
             this.enableChat();
             this.loadChats();
             this.showToast('Login successful!', 'success');
         } else {
-            const errorMessage = phpOutput.login?.message || 'Login failed';
+            const errorMessage = (phpOutput.login && phpOutput.login.message) || 'Login failed';
+            console.log('Login failed:', errorMessage);
             this.handleLoginError(errorMessage);
             this.showToast(errorMessage, 'error');
         }
@@ -363,9 +396,15 @@ class WebSocketChat {
      * Handle chats response
      */
     handleChatsResponse(chatsData) {
+        console.log('Handling chats response:', chatsData);
+        
         if (chatsData.status === 'success') {
             this.chats = chatsData.chats || [];
+           console.log('Loaded chats:', this.chats.length);
             this.applyFiltersAndSearch();
+        } else {
+            console.warn('Failed to load chats:', chatsData);
+            this.showToast('Failed to load conversations', 'error');
         }
     }
 
@@ -373,9 +412,13 @@ class WebSocketChat {
      * Handle messages response
      */
     handleMessagesResponse(messagesData) {
+        console.log('Handling messages response:', messagesData);
+        
         if (messagesData.status === 'success') {
             this.messages = messagesData.messages || [];
             this.renderMessages();
+        } else {
+            console.warn('Failed to load messages:', messagesData);
         }
     }
 
@@ -383,8 +426,13 @@ class WebSocketChat {
      * Handle send message response
      */
     handleSendMessageResponse(sendData) {
+        console.log('Handling send message response:', sendData);
+        
         if (sendData.status === 'success') {
             this.loadMessages();
+        } else {
+            console.warn('Failed to send message:', sendData);
+            this.showToast('Failed to send message', 'error');
         }
     }
 
@@ -392,6 +440,8 @@ class WebSocketChat {
      * Handle incoming message
      */
     handleIncomingMessage(receiverData) {
+        console.log('Handling incoming message:', receiverData);
+        
         if (receiverData.receiver_sessions && receiverData.receiver_sessions.length > 0) {
             const session = receiverData.receiver_sessions[0];
             
@@ -407,6 +457,7 @@ class WebSocketChat {
      * Update user info in UI
      */
     updateUserInfo() {
+        console.log('Updating user info with profile:', this.userProfile);
         const displayName = this.userProfile?.name || this.username;
         this.currentUserSpan.textContent = this.username;
         this.currentUserName.textContent = displayName;
@@ -751,7 +802,8 @@ class WebSocketChat {
             this.ws.send(JSON.stringify(data));
             console.log('Sent:', data);
         } else {
-            console.error('WebSocket not connected');
+            console.error('WebSocket not connected, readyState:', this.ws ? this.ws.readyState : 'null');
+            this.showToast('Connection lost. Reconnecting...', 'warning');
             this.handleConnectionError();
         }
     }
