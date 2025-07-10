@@ -471,6 +471,12 @@ class WebSocketChat {
         
         if (messagesData.status == 'success') {
             this.messages = messagesData.messages || [];
+            
+            // Update chat list with latest message info
+            if (this.messages.length > 0 && this.currentRoomId) {
+                this.updateChatFromMessages(this.currentRoomId, this.messages);
+            }
+            
             this.renderMessages();
         } else {
             console.warn('Failed to load messages:', messagesData);
@@ -500,11 +506,56 @@ class WebSocketChat {
         if (receiverData.receiver_sessions && receiverData.receiver_sessions.length > 0) {
             const session = receiverData.receiver_sessions[0];
             
+            // Update chat list with new message info instead of making get_chats request
+            this.updateChatFromReceiverSession(session);
+            
             if (session.RoomId == this.currentRoomId) {
                 this.loadMessages();
             }
+        }
+    }
+
+    /**
+     * Update chat from receiver session (incoming message)
+     */
+    updateChatFromReceiverSession(session) {
+        const chatIndex = this.chats.findIndex(chat => chat.RoomId == session.RoomId);
+        
+        if (chatIndex != -1) {
+            // Update existing chat
+            this.chats[chatIndex].MsgTxt = session.MsgTxt;
+            this.chats[chatIndex].Status = session.Sent_at;
             
-            this.loadChats();
+            // Only increment unread if it's not the current active chat
+            if (session.RoomId != this.currentRoomId) {
+                this.chats[chatIndex].Unread = (this.chats[chatIndex].Unread || 0) + 1;
+            }
+            
+            // Move chat to top of list
+            const updatedChat = this.chats.splice(chatIndex, 1)[0];
+            this.chats.unshift(updatedChat);
+            
+            this.updateChatCounts();
+            this.applyFiltersAndSearch();
+        }
+    }
+
+    /**
+     * Update chat from messages response
+     */
+    updateChatFromMessages(roomId, messages) {
+        const chatIndex = this.chats.findIndex(chat => chat.RoomId == roomId);
+        
+        if (chatIndex != -1 && messages.length > 0) {
+            const latestMessage = messages[messages.length - 1];
+            
+            // Update chat with latest message and reset unread count
+            this.chats[chatIndex].MsgTxt = latestMessage.MsgTxt;
+            this.chats[chatIndex].Status = latestMessage.Sent_At;
+            this.chats[chatIndex].Unread = 0; // Reset unread count when viewing messages
+            
+            this.updateChatCounts();
+            this.applyFiltersAndSearch();
         }
     }
 
@@ -513,8 +564,13 @@ class WebSocketChat {
      */
     updateUserInfo() {
         console.log('Updating user info with profile:', this.userProfile);
+        
+        // Display name and contact info separately
         const displayName = this.userProfile?.name || this.username;
+        const contactInfo = this.userProfile?.email || this.userProfile?.mobile || this.username;
+        
         this.currentUserName.textContent = displayName;
+        this.currentUserContact.textContent = contactInfo;
         this.welcomeUsername.textContent = displayName;
     }
 
@@ -896,8 +952,9 @@ class WebSocketChat {
      * Reset welcome screen
      */
     resetWelcomeScreen() {
+        this.postLoginWelcome.style.display = 'none';
         this.messagesContainer.innerHTML = `
-            <div class="welcome-screen">
+            <div class="welcome-screen" id="welcomeScreen">
                 <div class="welcome-icon">💬</div>
                 <h3>Welcome to Nimble Chat</h3>
                 <p>Hi <span id="welcomeUsername"></span>! Select a conversation to start chatting</p>
@@ -912,11 +969,49 @@ class WebSocketChat {
                     </div>
                 </div>
             </div>
+            
+            <!-- Post-login welcome page -->
+            <div class="post-login-welcome" id="postLoginWelcome" style="display: none;">
+                <div class="welcome-animation">
+                    <div class="welcome-logo">💬</div>
+                    <div class="welcome-pulse"></div>
+                </div>
+                <h2>Welcome to Nimble Chat!</h2>
+                <p>Hi <span id="postLoginUsername"></span>! You're now connected and ready to chat.</p>
+                <div class="welcome-stats">
+                    <div class="stat-item">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-text">
+                            <span class="stat-number" id="welcomeTotalChats">0</span>
+                            <span class="stat-label">Conversations</span>
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-icon">📱</div>
+                        <div class="stat-text">
+                            <span class="stat-number" id="welcomeOnlineChats">0</span>
+                            <span class="stat-label">Online</span>
+                        </div>
+                    </div>
+                </div>
+                <button class="welcome-continue-btn" id="welcomeContinueBtn">Start Chatting</button>
+            </div>
         `;
         
         // Re-initialize elements
         this.welcomeUsername = document.getElementById('welcomeUsername');
         this.totalChatsCount = document.getElementById('totalChatsCount');
+        this.postLoginWelcome = document.getElementById('postLoginWelcome');
+        this.postLoginUsername = document.getElementById('postLoginUsername');
+        this.welcomeContinueBtn = document.getElementById('welcomeContinueBtn');
+        this.welcomeScreen = document.getElementById('welcomeScreen');
+        this.welcomeTotalChats = document.getElementById('welcomeTotalChats');
+        this.welcomeOnlineChats = document.getElementById('welcomeOnlineChats');
+        
+        // Re-attach event listener
+        if (this.welcomeContinueBtn) {
+            this.welcomeContinueBtn.addEventListener('click', () => this.hidePostLoginWelcome());
+        }
     }
 
     /**
@@ -959,7 +1054,11 @@ class WebSocketChat {
         this.isConnected = false;
         this.updateConnectionStatus('Connection Error', false);
         this.disableChat();
-        this.attemptReconnect();
+        
+        // Only attempt reconnect if user is logged in
+        if (this.username && this.sessionId) {
+            this.attemptReconnect();
+        }
     }
 
     /**
