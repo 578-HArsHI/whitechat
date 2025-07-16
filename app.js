@@ -20,6 +20,7 @@ class WebSocketChat {
         this.messages = [];
         this.currentFilter = 'all';
         this.searchQuery = '';
+        this.selectedFiles = [];
         
         this.initializeElements();
         this.attachEventListeners();
@@ -50,6 +51,9 @@ class WebSocketChat {
         this.messagesContainer = document.getElementById('messagesContainer');
         this.messageInput = document.getElementById('messageInput');
         this.sendBtn = document.getElementById('sendBtn');
+        this.fileInput = document.getElementById('fileInput');
+        this.attachBtn = document.getElementById('attachBtn');
+        this.fileList = document.getElementById('fileList');
         this.refreshBtn = document.getElementById('refreshBtn');
         this.settingsBtn = document.getElementById('settingsBtn');
         this.totalChatsCount = document.getElementById('totalChatsCount');
@@ -94,6 +98,11 @@ class WebSocketChat {
         this.messageInput.addEventListener('keypress', (e) => {
             if (e.key == 'Enter') this.sendMessage();
         });
+        this.messageInput.addEventListener('input', () => this.updateSendButtonState());
+
+        // File attachment events
+        this.attachBtn.addEventListener('click', () => this.fileInput.click());
+        this.fileInput.addEventListener('change', (e) => this.handleFileSelection(e));
 
         // Search and filter events
         this.searchInput.addEventListener('input', (e) => this.handleSearch(e.target.value));
@@ -575,6 +584,106 @@ class WebSocketChat {
     }
 
     /**
+     * Handle file selection
+     */
+    handleFileSelection(event) {
+        const files = Array.from(event.target.files);
+        const maxSize = 1024 * 1024 * 1024; // 1GB in bytes
+        
+        // Filter files that exceed size limit
+        const validFiles = [];
+        const invalidFiles = [];
+        
+        files.forEach(file => {
+            if (file.size <= maxSize) {
+                validFiles.push(file);
+            } else {
+                invalidFiles.push(file.name);
+            }
+        });
+        
+        // Show error for files that exceed limit
+        if (invalidFiles.length > 0) {
+            this.showToast(`Files exceed 1GB limit: ${invalidFiles.join(', ')}`, 'error');
+        }
+        
+        // Add valid files to selection
+        this.selectedFiles = [...this.selectedFiles, ...validFiles];
+        this.renderFileList();
+        this.updateSendButtonState();
+        
+        // Clear file input
+        event.target.value = '';
+    }
+
+    /**
+     * Remove file from selection
+     */
+    removeFile(index) {
+        this.selectedFiles.splice(index, 1);
+        this.renderFileList();
+        this.updateSendButtonState();
+    }
+
+    /**
+     * Format file size
+     */
+    formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    /**
+     * Render file list
+     */
+    renderFileList() {
+        if (this.selectedFiles.length === 0) {
+            this.fileList.style.display = 'none';
+            return;
+        }
+        
+        this.fileList.style.display = 'block';
+        this.fileList.innerHTML = '';
+        
+        this.selectedFiles.forEach((file, index) => {
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-item';
+            
+            fileItem.innerHTML = `
+                <div class="file-info">
+                    <div class="file-icon">📎</div>
+                    <div class="file-details">
+                        <div class="file-name">${this.escapeHtml(file.name)}</div>
+                        <div class="file-size">${this.formatFileSize(file.size)}</div>
+                    </div>
+                </div>
+                <button class="file-remove-btn" onclick="window.chatApp.removeFile(${index})" title="Remove file">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                </button>
+            `;
+            
+            this.fileList.appendChild(fileItem);
+        });
+    }
+
+    /**
+     * Update send button state
+     */
+    updateSendButtonState() {
+        const hasMessage = this.messageInput.value.trim().length > 0;
+        const hasFiles = this.selectedFiles.length > 0;
+        
+        this.sendBtn.disabled = !(hasMessage || hasFiles) || !this.isConnected;
+    }
+
+    /**
      * Update chat counts
      */
     updateChatCounts() {
@@ -598,8 +707,9 @@ class WebSocketChat {
      */
     enableChat() {
         this.messageInput.disabled = false;
-        this.sendBtn.disabled = false;
+        this.attachBtn.disabled = false;
         this.messageInput.placeholder = 'Type a message...';
+        this.updateSendButtonState();
     }
 
     /**
@@ -852,20 +962,32 @@ class WebSocketChat {
     sendMessage() {
         const messageText = this.messageInput.value.trim();
         
-        if (!messageText || !this.currentRoomId) return;
+        if ((!messageText && this.selectedFiles.length === 0) || !this.currentRoomId) return;
         
         const messageData = {
             action: 'send_message',
             username: this.username,
             roomid: this.currentRoomId,
-            message: messageText,
+            message: messageText || '',
             sessionid: this.sessionId,
             batchId: this.generateBatchId(),
             requestId: this.generateBatchId()
         };
         
+        // Add file data if files are selected
+        if (this.selectedFiles.length > 0) {
+            messageData.files = this.selectedFiles.map(file => ({
+                name: file.name,
+                size: file.size,
+                type: file.type
+            }));
+        }
+        
         this.sendJSON(messageData);
         this.messageInput.value = '';
+        this.selectedFiles = [];
+        this.renderFileList();
+        this.updateSendButtonState();
     }
 
     /**
@@ -930,6 +1052,7 @@ class WebSocketChat {
         this.messages = [];
         this.searchQuery = '';
         this.currentFilter = 'all';
+        this.selectedFiles = [];
         
         // Reset UI
         this.usernameInput.value = '';
@@ -938,6 +1061,7 @@ class WebSocketChat {
         this.loginError.textContent = '';
         this.searchInput.value = '';
         this.clearSearchBtn.style.display = 'none';
+        this.renderFileList();
         
         // Reset filter tabs
         this.filterTabs.forEach(tab => {
@@ -1103,8 +1227,9 @@ class WebSocketChat {
      */
     disableChat() {
         this.messageInput.disabled = true;
-        this.sendBtn.disabled = true;
+        this.attachBtn.disabled = true;
         this.messageInput.placeholder = 'Reconnecting...';
+        this.updateSendButtonState();
     }
 
     /**
@@ -1139,5 +1264,5 @@ class WebSocketChat {
 
 // Initialize the chat application when page loads
 document.addEventListener('DOMContentLoaded', () => {
-    new WebSocketChat();
+    window.chatApp = new WebSocketChat();
 });
