@@ -402,7 +402,7 @@ class WebSocketChat {
         
         // Handle messages response
         if (phpOutput.get_messages) {
-            this.handleMessagesResponse(phpOutput.get_messages);
+            this.handleMessagesResponse(phpOutput);
         }
         
         // Handle send message response
@@ -487,9 +487,18 @@ class WebSocketChat {
     handleMessagesResponse(messagesData) {
         console.log('Handling messages response:', messagesData);
         
-        if (messagesData.status == 'success') {
+        const messagesData = responseData.get_messages;
+        const filesData = responseData.get_message_files;
+        
+        if (messagesData && messagesData.status == 'success') {
             this.messages = messagesData.messages || [];
-            this.messageFiles = messagesData.get_message_files?.message_files || [];
+            
+            // Handle message files from get_message_files response
+            if (filesData && filesData.status == 'success') {
+                this.messageFiles = filesData.message_files || [];
+            } else {
+                this.messageFiles = [];
+            }
             
             // Update chat list with latest message info
             if (this.messages.length > 0 && this.currentRoomId) {
@@ -498,7 +507,7 @@ class WebSocketChat {
             
             this.renderMessages();
         } else {
-            console.warn('Failed to load messages:', messagesData);
+            console.warn('Failed to load messages:', responseData);
         }
     }
 
@@ -975,7 +984,7 @@ class WebSocketChat {
         });
         
         // Get files for this message
-        const messageFiles = this.messageFiles ? this.messageFiles.filter(file => file.MsgId == message.MsgId) : [];
+        const messageFiles = this.messageFiles ? this.messageFiles.filter(file => parseInt(file.MsgId) === parseInt(message.MsgId)) : [];
         
         let filesHtml = '';
         if (messageFiles.length > 0) {
