@@ -1068,18 +1068,6 @@ class WebSocketChat {
     handleLogout() {
         this.settingsDropdown.classList.remove('show');
         
-        // Send logout request
-        const logoutData = {
-            action: 'logout',
-            username: this.username,
-            sessionid: this.sessionId,
-            deviceip: '127.0.0.1',
-            batchId: this.generateBatchId(),
-            requestId: this.generateBatchId()
-        };
-        
-        this.sendJSON(logoutData);
-        
         // Disconnect and reset
         this.disconnect();
         this.resetApplication();
@@ -1126,7 +1114,6 @@ class WebSocketChat {
      * Reset welcome screen
      */
     resetWelcomeScreen() {
-        this.postLoginWelcome.style.display = 'none';
         this.messagesContainer.innerHTML = `
             <div class="welcome-screen" id="welcomeScreen">
                 <div class="welcome-icon">💬</div>
@@ -1210,7 +1197,11 @@ class WebSocketChat {
         this.isConnected = false;
         this.updateConnectionStatus('Disconnected', false);
         this.disableChat();
-        this.attemptReconnect();
+        
+        if (this.username && this.sessionId) {
+            console.log('handleDisconnect()');
+            this.attemptReconnect();
+        }
     }
 
     /**
@@ -1286,7 +1277,7 @@ class WebSocketChat {
      * Scroll messages to bottom
      */
     scrollToBottom() {
-        const messagesList = document.getElementById('messagesList');
+        const messagesList = document.getElementById('messagesContainer');
         if (messagesList) {
             messagesList.scrollTop = messagesList.scrollHeight;
         }
