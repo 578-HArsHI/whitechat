@@ -504,15 +504,11 @@ class WebSocketChat {
         }
     }
 
-    /**
     handleMessagesResponse(responseData) {
         const messagesData = responseData.get_messages;
         const filesData = responseData.get_message_files;
         console.log('Handling messages response:', messagesData);
-        
-        const messagesData = responseData.get_messages;
-        const filesData = responseData.get_message_files;
-        
+
         if (messagesData && messagesData.status == 'success') {
             this.messages = messagesData.messages || [];
             
