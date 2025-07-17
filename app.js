@@ -22,6 +22,12 @@ class WebSocketChat {
         this.searchQuery = '';
         this.selectedFiles = [];
         
+        // Add remove all files button event
+        this.removeAllFilesBtn = document.getElementById('removeAllFilesBtn');
+        if (this.removeAllFilesBtn) {
+            this.removeAllFilesBtn.addEventListener('click', () => this.removeAllFiles());
+        }
+        
         this.initializeElements();
         this.attachEventListeners();
         this.initializeDarkMode();
@@ -77,6 +83,9 @@ class WebSocketChat {
         
         // Dark mode toggle
         this.darkModeToggle = document.getElementById('darkModeToggle');
+        
+        // Add missing currentUserContact element
+        this.currentUserContact = document.getElementById('currentUserContact');
         
         // Toast container
         this.toastContainer = document.getElementById('toastContainer');
@@ -480,6 +489,7 @@ class WebSocketChat {
         
         if (messagesData.status == 'success') {
             this.messages = messagesData.messages || [];
+            this.messageFiles = messagesData.get_message_files?.message_files || [];
             
             // Update chat list with latest message info
             if (this.messages.length > 0 && this.currentRoomId) {
@@ -639,6 +649,15 @@ class WebSocketChat {
     }
 
     /**
+     * Remove all files from selection
+     */
+    removeAllFiles() {
+        this.selectedFiles = [];
+        this.renderFileList();
+        this.updateSendButtonState();
+    }
+
+    /**
      * Render file list
      */
     renderFileList() {
@@ -648,7 +667,14 @@ class WebSocketChat {
         }
         
         this.fileList.style.display = 'block';
-        this.fileList.innerHTML = '';
+        this.fileList.innerHTML = `
+            <div class="file-list-header">
+                <span class="file-list-title">Selected Files (${this.selectedFiles.length})</span>
+                <button class="remove-all-btn" onclick="window.chatApp.removeAllFiles()" title="Remove all files">
+                    Remove All
+                </button>
+            </div>
+        `;
         
         this.selectedFiles.forEach((file, index) => {
             const fileItem = document.createElement('div');
@@ -886,6 +912,11 @@ class WebSocketChat {
      * Select a chat
      */
     selectChat(roomId, chatName, isOnline = false) {
+        // Clear selected files when switching conversations
+        this.selectedFiles = [];
+        this.renderFileList();
+        this.updateSendButtonState();
+        
         this.currentRoomId = roomId;
         this.currentChatName = chatName;
         
@@ -943,13 +974,34 @@ class WebSocketChat {
             minute: '2-digit'
         });
         
+        // Get files for this message
+        const messageFiles = this.messageFiles ? this.messageFiles.filter(file => file.MsgId == message.MsgId) : [];
+        
+        let filesHtml = '';
+        if (messageFiles.length > 0) {
+            filesHtml = `
+                <div class="message-files">
+                    ${messageFiles.map(file => `
+                        <div class="message-file">
+                            <div class="message-file-icon">📎</div>
+                            <div class="message-file-info">
+                                <div class="message-file-name">${this.escapeHtml(file.FileName)}</div>
+                                <div class="message-file-size">${file.FileSize}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
         messageEl.innerHTML = `
             <div class="message-bubble">
                 <div class="message-header">
                     <span class="message-username">${message.Name || message.User}</span>
                     <span class="message-time">${time}</span>
                 </div>
-                <div class="message-content">${this.escapeHtml(message.MsgTxt)}</div>
+                ${message.MsgTxt ? `<div class="message-content">${this.escapeHtml(message.MsgTxt)}</div>` : ''}
+                ${filesHtml}
             </div>
         `;
         
@@ -976,11 +1028,8 @@ class WebSocketChat {
         
         // Add file data if files are selected
         if (this.selectedFiles.length > 0) {
-            messageData.files = this.selectedFiles.map(file => ({
-                name: file.name,
-                size: file.size,
-                type: file.type
-            }));
+            messageData.files = this.selectedFiles.map(file => file.name);
+            messageData.size = this.selectedFiles.map(file => file.size);
         }
         
         this.sendJSON(messageData);
@@ -1061,6 +1110,7 @@ class WebSocketChat {
         this.loginError.textContent = '';
         this.searchInput.value = '';
         this.clearSearchBtn.style.display = 'none';
+        this.selectedFiles = [];
         this.renderFileList();
         
         // Reset filter tabs

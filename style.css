@@ -1035,6 +1035,38 @@ body {
     overflow-y: auto;
 }
 
+.file-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.file-list-title {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.remove-all-btn {
+    background: var(--error-color);
+    color: white;
+    border: none;
+    padding: 0.375rem 0.75rem;
+    border-radius: var(--radius);
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.remove-all-btn:hover {
+    background: #dc2626;
+    transform: translateY(-1px);
+}
+
 .file-item {
     display: flex;
     align-items: center;
@@ -1102,6 +1134,84 @@ body {
 .file-remove-btn:hover {
     background: var(--error-color);
     color: white;
+}
+
+/* Message Files */
+.message-files {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.message.received .message-files {
+    border-top-color: var(--border-color);
+}
+
+.message-file {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius);
+    margin-bottom: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.message.received .message-file {
+    background: var(--bg-hover);
+}
+
+.message-file:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.message.received .message-file:hover {
+    background: var(--bg-tertiary);
+}
+
+.message-file:last-child {
+    margin-bottom: 0;
+}
+
+.message-file-icon {
+    font-size: 1rem;
+    opacity: 0.8;
+}
+
+.message-file-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.message-file-name {
+    font-weight: 500;
+    font-size: 0.85rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-bottom: 0.125rem;
+}
+
+.message.sent .message-file-name {
+    color: rgba(255, 255, 255, 0.95);
+}
+
+.message.received .message-file-name {
+    color: var(--text-primary);
+}
+
+.message-file-size {
+    font-size: 0.75rem;
+    opacity: 0.8;
+}
+
+.message.sent .message-file-size {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.message.received .message-file-size {
+    color: var(--text-secondary);
 }
 
 /* Toast Notifications */
