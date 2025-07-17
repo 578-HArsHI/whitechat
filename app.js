@@ -90,6 +90,11 @@ class WebSocketChat {
         // Toast container
         this.toastContainer = document.getElementById('toastContainer');
         this.notificationToast = document.getElementById('notificationToast');
+        
+        // Notification elements
+        this.notificationIcon = document.getElementById('notificationIcon');
+        this.notificationPanel = document.getElementById('notificationPanel');
+        this.notificationClose = document.getElementById('notificationClose');
     }
 
     /**
@@ -132,6 +137,10 @@ class WebSocketChat {
         
         // Dark mode toggle
         this.darkModeToggle.addEventListener('click', () => this.toggleDarkMode());
+
+        // Notification events
+        this.notificationIcon.addEventListener('click', () => this.showNotificationPanel());
+        this.notificationClose.addEventListener('click', () => this.hideNotificationPanel());
 
         // Close settings dropdown when clicking outside
         document.addEventListener('click', (e) => {
@@ -482,9 +491,9 @@ class WebSocketChat {
     }
 
     /**
-     * Handle messages response
-     */
-    handleMessagesResponse(messagesData) {
+    handleMessagesResponse(responseData) {
+        const messagesData = responseData.get_messages;
+        const filesData = responseData.get_message_files;
         console.log('Handling messages response:', messagesData);
         
         const messagesData = responseData.get_messages;
