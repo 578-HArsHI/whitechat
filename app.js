@@ -191,6 +191,20 @@ class WebSocketChat {
     }
 
     /**
+     * Show notification panel
+     */
+    showNotificationPanel() {
+        this.notificationPanel.classList.add('show');
+    }
+
+    /**
+     * Hide notification panel
+     */
+    hideNotificationPanel() {
+        this.notificationPanel.classList.remove('show');
+    }
+
+    /**
      * Show login modal
      */
     showLoginModal() {
