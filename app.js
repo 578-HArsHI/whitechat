@@ -28,6 +28,10 @@ class WebSocketChat {
             this.removeAllFilesBtn.addEventListener('click', () => this.removeAllFiles());
         }
         
+        // File upload tracking
+        this.uploadProgress = new Map(); // Track upload progress for each file
+        this.CHUNK_SIZE = 15 * 1024 * 1024; // 15 MB
+        
         this.initializeElements();
         this.attachEventListeners();
         this.initializeDarkMode();
@@ -537,6 +541,10 @@ class WebSocketChat {
         console.log('Handling send message response:', sendData);
         
         if (sendData.status == 'success') {
+            // Handle file uploads if files were sent
+            if (sendData.files && sendData.files.length > 0) {
+                this.handleFileUploads(sendData.files);
+            }
             this.loadMessages();
         } else {
             console.warn('Failed to send message:', sendData);
