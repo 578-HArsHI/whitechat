@@ -558,6 +558,202 @@ class WebSocketChat {
     }
 
     /**
+     * Handle file uploads after successful message send
+     */
+    handleFileUploads(files) {
+        console.log('Starting file uploads:', files);
+        
+        // Show notification panel
+        this.showNotificationPanel();
+        
+        // Start uploading each file
+        files.forEach(fileInfo => {
+            const originalFile = this.selectedFiles.find(f => f.name === fileInfo.FileName);
+            if (originalFile) {
+                this.sendFileInChunks(originalFile, fileInfo.FileId);
+            }
+        });
+    }
+
+    /**
+     * Send file in chunks
+     */
+    sendFileInChunks(file, fileId) {
+        const totalChunks = Math.ceil(file.size / this.CHUNK_SIZE);
+        
+        // Initialize progress tracking
+        const progressKey = `${fileId}_${file.name}`;
+        this.uploadProgress.set(progressKey, {
+            fileId: fileId,
+            fileName: file.name,
+            roomName: this.currentChatName,
+            fileSize: file.size,
+            totalChunks: totalChunks,
+            currentChunk: 0,
+            percentage: 0
+        });
+        
+        this.updateUploadProgressDisplay();
+        
+        // Start with first chunk
+        this.sendNextChunk(file, fileId, 0, totalChunks);
+    }
+
+    /**
+     * Send next chunk of file
+     */
+    sendNextChunk(file, fileId, chunkIndex, totalChunks) {
+        const offset = chunkIndex * this.CHUNK_SIZE;
+        const blob = file.slice(offset, offset + this.CHUNK_SIZE);
+        const reader = new FileReader();
+        const sessionId = this.generateSessionId();
+
+        reader.onload = (e) => {
+            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                const header = JSON.stringify({
+                    action: 'chunk_upload',
+                    username: this.username,
+                    fileId: fileId,
+                    fileName: file.name,
+                    sessionid: sessionId,
+                    chunkIndex: chunkIndex,
+                    totalChunks: totalChunks,
+                    batchId: this.generateBatchId(),
+                    requestId: this.generateBatchId()
+                });
+
+                const encoder = new TextEncoder();
+                const headerBytes = encoder.encode(header);
+                const headerLengthBuffer = new Uint32Array([headerBytes.length]).buffer;
+                const chunkBuffer = new Uint8Array(e.target.result);
+
+                const fullBuffer = new Uint8Array(4 + headerBytes.length + chunkBuffer.length);
+                fullBuffer.set(new Uint8Array(headerLengthBuffer), 0);
+                fullBuffer.set(headerBytes, 4);
+                fullBuffer.set(chunkBuffer, 4 + headerBytes.length);
+
+                // Store pending chunk info for response handling
+                this.pendingChunks = this.pendingChunks || new Map();
+                this.pendingChunks.set(`${fileId}_${chunkIndex}`, {
+                    file: file,
+                    fileId: fileId,
+                    chunkIndex: chunkIndex,
+                    totalChunks: totalChunks
+                });
+
+                this.ws.send(fullBuffer);
+                console.log(`Sent chunk ${chunkIndex + 1}/${totalChunks} for file ${file.name}`);
+            }
+        };
+
+        reader.readAsArrayBuffer(blob);
+    }
+
+    /**
+     * Handle chunk upload response
+     */
+    handleChunkUploadResponse(chunkData) {
+        console.log('Handling chunk upload response:', chunkData);
+        
+        if (chunkData.status === 'success') {
+            const fileId = chunkData.fileId;
+            const chunkIndex = parseInt(chunkData.chunkIndex);
+            const totalChunks = parseInt(chunkData.totalChunks);
+            
+            // Find pending chunk info
+            const pendingKey = `${fileId}_${chunkIndex}`;
+            const pendingChunk = this.pendingChunks?.get(pendingKey);
+            
+            if (pendingChunk) {
+                // Update progress
+                const progressKey = `${fileId}_${pendingChunk.file.name}`;
+                const progress = this.uploadProgress.get(progressKey);
+                
+                if (progress) {
+                    progress.currentChunk = chunkIndex + 1;
+                    progress.percentage = Math.round((progress.currentChunk / progress.totalChunks) * 100);
+                    this.updateUploadProgressDisplay();
+                }
+                
+                // Send next chunk if not finished
+                if (chunkIndex + 1 < totalChunks) {
+                    this.sendNextChunk(pendingChunk.file, fileId, chunkIndex + 1, totalChunks);
+                } else {
+                    // Upload completed
+                    console.log(`File upload completed: ${pendingChunk.file.name}`);
+                    this.showNotificationToast('Upload Complete', `${pendingChunk.file.name} uploaded successfully`);
+                    
+                    // Remove from progress tracking after a delay
+                    setTimeout(() => {
+                        this.uploadProgress.delete(progressKey);
+                        this.updateUploadProgressDisplay();
+                    }, 2000);
+                }
+                
+                // Clean up pending chunk
+                this.pendingChunks.delete(pendingKey);
+            }
+        } else {
+            console.error('Chunk upload failed:', chunkData);
+            this.showToast('Chunk upload failed', 'error');
+        }
+    }
+
+    /**
+     * Update upload progress display in notification panel
+     */
+    updateUploadProgressDisplay() {
+        const progressContainer = document.getElementById('uploadProgressContainer');
+        if (!progressContainer) {
+            // Create progress container if it doesn't exist
+            const panelContent = this.notificationPanel.querySelector('.notification-panel-content');
+            const uploadContainer = document.createElement('div');
+            uploadContainer.id = 'uploadProgressContainer';
+            uploadContainer.innerHTML = '<h4 style="margin-bottom: 1rem; color: var(--text-primary); font-weight: 600;">File Uploads</h4>';
+            panelContent.insertBefore(uploadContainer, panelContent.firstChild);
+        }
+        
+        // Clear existing progress items
+        const existingItems = progressContainer.querySelectorAll('.upload-progress-item');
+        existingItems.forEach(item => item.remove());
+        
+        // Add current uploads
+        this.uploadProgress.forEach((progress, key) => {
+            const progressItem = document.createElement('div');
+            progressItem.className = 'upload-progress-item';
+            
+            progressItem.innerHTML = `
+                <div class="upload-info">
+                    <div class="upload-header">
+                        <div class="upload-icon">📁</div>
+                        <div class="upload-details">
+                            <div class="upload-filename">${this.escapeHtml(progress.fileName)}</div>
+                            <div class="upload-room">Room: ${this.escapeHtml(progress.roomName)}</div>
+                        </div>
+                        <div class="upload-percentage">${progress.percentage}%</div>
+                    </div>
+                    <div class="upload-progress-bar">
+                        <div class="upload-progress-fill" style="width: ${progress.percentage}%"></div>
+                    </div>
+                    <div class="upload-stats">
+                        <span>Chunk ${progress.currentChunk}/${progress.totalChunks}</span>
+                        <span>${this.formatFileSize(progress.fileSize)}</span>
+                    </div>
+                </div>
+            `;
+            
+            progressContainer.appendChild(progressItem);
+        });
+        
+        // Hide upload container if no uploads
+        if (this.uploadProgress.size === 0) {
+            progressContainer.style.display = 'none';
+        } else {
+            progressContainer.style.display = 'block';
+        }
+    }
+
+    /**
      * Handle incoming message
      */
     handleIncomingMessage(receiverData) {
