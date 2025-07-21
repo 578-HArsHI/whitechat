@@ -437,6 +437,11 @@ class WebSocketChat {
             this.handleSendMessageResponse(phpOutput.send_message);
         }
         
+        // Handle chunk upload response
+        if (phpOutput.chunk_upload) {
+            this.handleChunkUploadResponse(phpOutput.chunk_upload);
+        }
+        
         // Handle receiver sessions (incoming messages)
         if (phpOutput.get_receiver_sessions) {
             this.handleIncomingMessage(phpOutput.get_receiver_sessions);
