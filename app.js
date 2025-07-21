@@ -21,6 +21,8 @@ class WebSocketChat {
         this.currentFilter = 'all';
         this.searchQuery = '';
         this.selectedFiles = [];
+        this.pendingFiles = [];
+        this.pendingFiles = [];
         
         // Add remove all files button event
         this.removeAllFilesBtn = document.getElementById('removeAllFilesBtn');
@@ -1252,6 +1254,9 @@ class WebSocketChat {
         const messageText = this.messageInput.value.trim();
         
         if ((!messageText && this.selectedFiles.length === 0) || !this.currentRoomId) return;
+        
+        // Store files before clearing for upload process
+        this.pendingFiles = [...this.selectedFiles];
         
         const messageData = {
             action: 'send_message',
