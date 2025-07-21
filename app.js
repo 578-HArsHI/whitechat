@@ -570,7 +570,7 @@ class WebSocketChat {
         
         // Start uploading each file
         files.forEach(fileInfo => {
-            const originalFile = this.selectedFiles.find(f => f.name === fileInfo.FileName);
+            const originalFile = this.pendingFiles.find(f => f.name === fileInfo.FileName);
             if (originalFile) {
                 this.sendFileInChunks(originalFile, fileInfo.FileId);
             }
