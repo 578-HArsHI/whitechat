@@ -705,24 +705,38 @@ class WebSocketChat {
      * Update upload progress display in notification panel
      */
     updateUploadProgressDisplay() {
-        const progressContainer = document.getElementById('uploadProgressContainer');
-        if (!progressContainer) {
-            // Create progress container if it doesn't exist
-            const panelContent = this.notificationPanel.querySelector('.notification-panel-content');
-            const uploadContainer = document.createElement('div');
-            uploadContainer.id = 'uploadProgressContainer';
-            uploadContainer.innerHTML = '<h4 style="margin-bottom: 1rem; color: var(--text-primary); font-weight: 600;">File Uploads</h4>';
-            panelContent.insertBefore(uploadContainer, panelContent.firstChild);
+        // Don't clear existing items, just update or add new ones
+        if (!this.notificationPanel) return;
+        
+        const content = this.notificationPanel.querySelector('.notification-panel-content');
+        if (!content) return;
+        
+        const uploadCount = Object.keys(this.uploadProgress).length;
+        
+        if (uploadCount === 0) return;
+        
+        // Create or find upload section
+        let uploadSection = content.querySelector('.upload-section');
+        if (!uploadSection) {
+            uploadSection = document.createElement('div');
+            uploadSection.className = 'upload-section';
+            uploadSection.innerHTML = '<h4>File Uploads</h4>';
+            content.appendChild(uploadSection);
         }
         
-        // Clear existing progress items
-        const existingItems = progressContainer.querySelectorAll('.upload-progress-item');
-        existingItems.forEach(item => item.remove());
-        
-        // Add current uploads
-        this.uploadProgress.forEach((progress, key) => {
-            const progressItem = document.createElement('div');
-            progressItem.className = 'upload-progress-item';
+        Object.entries(this.uploadProgress).forEach(([fileId, progress]) => {
+            // Check if progress item already exists
+            let progressItem = content.querySelector(`[data-file-id="${fileId}"]`);
+            
+            if (!progressItem) {
+                // Create new progress item
+                progressItem = document.createElement('div');
+                progressItem.className = 'upload-progress-item';
+                progressItem.dataset.fileId = fileId;
+                content.appendChild(progressItem);
+            }
+            
+            const percentage = Math.round((progress.uploadedChunks / progress.totalChunks) * 100);
             
             progressItem.innerHTML = `
                 <div class="upload-info">
@@ -732,27 +746,18 @@ class WebSocketChat {
                             <div class="upload-filename">${this.escapeHtml(progress.fileName)}</div>
                             <div class="upload-room">Room: ${this.escapeHtml(progress.roomName)}</div>
                         </div>
-                        <div class="upload-percentage">${progress.percentage}%</div>
+                        <div class="upload-percentage">${percentage}%</div>
                     </div>
                     <div class="upload-progress-bar">
-                        <div class="upload-progress-fill" style="width: ${progress.percentage}%"></div>
+                        <div class="upload-progress-fill" style="width: ${percentage}%"></div>
                     </div>
                     <div class="upload-stats">
-                        <span>Chunk ${progress.currentChunk}/${progress.totalChunks}</span>
+                        <span>Chunk ${progress.uploadedChunks}/${progress.totalChunks}</span>
                         <span>${this.formatFileSize(progress.fileSize)}</span>
                     </div>
                 </div>
             `;
-            
-            progressContainer.appendChild(progressItem);
         });
-        
-        // Hide upload container if no uploads
-        if (this.uploadProgress.size === 0) {
-            progressContainer.style.display = 'none';
-        } else {
-            progressContainer.style.display = 'block';
-        }
     }
 
     /**
