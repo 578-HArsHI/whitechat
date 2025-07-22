@@ -711,7 +711,7 @@ class WebSocketChat {
         const content = this.notificationPanel.querySelector('.notification-panel-content');
         if (!content) return;
         
-        const uploadCount = Object.keys(this.uploadProgress).length;
+        const uploadCount = this.uploadProgress.size;
         
         if (uploadCount === 0) return;
         
@@ -724,7 +724,7 @@ class WebSocketChat {
             content.appendChild(uploadSection);
         }
         
-        Object.entries(this.uploadProgress).forEach(([fileId, progress]) => {
+        this.uploadProgress.forEach((progress, fileId) => {
             // Check if progress item already exists
             let progressItem = content.querySelector(`[data-file-id="${fileId}"]`);
             
@@ -736,7 +736,7 @@ class WebSocketChat {
                 content.appendChild(progressItem);
             }
             
-            const percentage = Math.round((progress.uploadedChunks / progress.totalChunks) * 100);
+            const percentage = progress.percentage;
             
             progressItem.innerHTML = `
                 <div class="upload-info">
@@ -752,7 +752,7 @@ class WebSocketChat {
                         <div class="upload-progress-fill" style="width: ${percentage}%"></div>
                     </div>
                     <div class="upload-stats">
-                        <span>Chunk ${progress.uploadedChunks}/${progress.totalChunks}</span>
+                        <span>Chunk ${progress.currentChunk}/${progress.totalChunks}</span>
                         <span>${this.formatFileSize(progress.fileSize)}</span>
                     </div>
                 </div>
