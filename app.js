@@ -1134,10 +1134,13 @@ class WebSocketChat {
                         <div class="chat-item-time">${this.formatTime(chat.Status)}</div>
                     </div>
                     <div class="chat-item-preview">
-                        <span>${chat.MsgTxt || 'No messages yet'}</span>
-                        ${unreadBadge}
-                    </div>
-                </div>
+                ${(() => {
+                    // Check if file is currently being uploaded or downloaded
+                    const isUploading = this.uploadProgress.has(file.id);
+                    const isDownloading = this.activeDownloads.has(file.id);
+                    const isDisabled = isUploading || isDownloading;
+                    
+                    return `
                 <button class="message-file-download ${isDisabled ? 'disabled' : ''}" 
                         data-file-id="${file.id}" 
                         data-file-name="${file.name}"
@@ -1147,7 +1150,8 @@ class WebSocketChat {
                         <polyline points="7,10 12,15 17,10"/>
                         <line x1="12" y1="15" x2="12" y2="3"/>
                     </svg>
-                </button>
+                </button>`;
+                })()}
             `;
             
             // Add click event listener for download button
