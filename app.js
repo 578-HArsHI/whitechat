@@ -32,8 +32,6 @@ class WebSocketChat {
         
         // File upload tracking
         this.uploadProgress = new Map(); // Track upload progress for each file
-        this.downloadProgress = new Map(); // Track download progress for each file
-        this.activeDownloads = new Map(); // Track active downloads
         this.CHUNK_SIZE = 15 * 1024 * 1024; // 15 MB
         
         this.initializeElements();
@@ -577,6 +575,12 @@ class WebSocketChat {
                 this.sendFileInChunks(originalFile, fileInfo.FileId);
             }
         });
+        
+        // Clear pending files after successful upload initiation
+        this.pendingFiles = [];
+        
+        // Update download button states for uploaded files
+        this.updateDownloadButtonStates();
     }
 
     /**
@@ -1339,12 +1343,6 @@ class WebSocketChat {
         this.searchQuery = '';
         this.currentFilter = 'all';
         this.selectedFiles = [];
-        
-        // Clear progress tracking
-        this.uploadProgress.clear();
-        this.downloadProgress.clear();
-        this.activeDownloads.clear();
-        this.pendingFiles = [];
         
         // Reset UI
         this.usernameInput.value = '';
