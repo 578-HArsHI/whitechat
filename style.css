@@ -1416,6 +1416,7 @@ body {
 .message-file-icon {
     font-size: 1rem;
     opacity: 0.8;
+    flex-shrink: 0;
 }
 
 .message-file-info {
@@ -1451,6 +1452,42 @@ body {
 
 .message.received .message-file-size {
     color: var(--text-secondary);
+}
+
+.message-file-download {
+    background: transparent;
+    border: none;
+    color: inherit;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    opacity: 0.7;
+}
+
+.message-file-download:hover:not(.disabled) {
+    background: rgba(255, 255, 255, 0.2);
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.message.received .message-file-download:hover:not(.disabled) {
+    background: var(--bg-tertiary);
+}
+
+.message-file-download.disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.message-file-download svg {
+    width: 14px;
+    height: 14px;
 }
 
 /* Toast Notifications */
