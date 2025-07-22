@@ -1132,26 +1132,7 @@ class WebSocketChat {
             const isDownloading = this.activeDownloads.has(file.id);
             const isDisabled = isUploading || isDownloading;
                         <div class="chat-item-time">${this.formatTime(chat.Status)}</div>
-                    </div>
-                    <div class="chat-item-preview">
-                ${(() => {
-                    // Check if file is currently being uploaded or downloaded
-                    const isUploading = this.uploadProgress.has(fileInfo.FileId);
-                    const isDownloading = this.activeDownloads.has(fileInfo.FileId);
-                    const isDisabled = isUploading || isDownloading;
-                    
-                    return `
-                <button class="message-file-download ${isDisabled ? 'disabled' : ''}" 
-                        data-file-id="${file.id}" 
-                        data-file-name="${file.name}"
-                        ${isDisabled ? 'disabled' : ''}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="7,10 12,15 17,10"/>
-                                    data-file-id="${fileInfo.FileId}" 
-                                    data-file-name="${fileInfo.FileName}"
-                </button>`;
-                })()}
+                </div>
             `;
             
             // Add click event listener for download button
