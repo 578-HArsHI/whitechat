@@ -575,12 +575,6 @@ class WebSocketChat {
                 this.sendFileInChunks(originalFile, fileInfo.FileId);
             }
         });
-        
-        // Clear pending files after successful upload initiation
-        this.pendingFiles = [];
-        
-        // Update download button states for uploaded files
-        this.updateDownloadButtonStates();
     }
 
     /**
@@ -1553,6 +1547,181 @@ class WebSocketChat {
             this.ws.close();
             this.ws = null;
         }
+    }
+
+    downloadFile(fileId, fileName) {
+        if (this.activeDownloads.has(fileId) || this.uploadProgress.has(fileId)) {
+            return; // Already downloading or uploading
+        }
+
+        console.log('Starting download for file:', fileName, 'ID:', fileId);
+        
+        // Add to active downloads
+        this.activeDownloads.add(fileId);
+        this.updateDownloadButtonStates();
+        
+        // Show notification panel
+        this.notificationPanel.classList.add('show');
+        
+        // Send get_max_chunkindex request
+        const requestData = {
+            action: 'get_max_chunkindex',
+            username: this.username,
+            sessionid: this.sessionId,
+            fileId: fileId.toString()
+        };
+        
+        this.sendMessage(JSON.stringify(requestData));
+    }
+
+    handleMaxChunkIndexResponse(responseData) {
+        const maxChunkData = responseData.phpOutput.get_max_chunkindex;
+        
+        if (maxChunkData.status === 'success' && maxChunkData.max_chunkindex.length > 0) {
+            const fileInfo = maxChunkData.max_chunkindex[0];
+            const fileId = parseInt(fileInfo.FileId);
+            const fileName = fileInfo.FileName;
+            const maxChunk = parseInt(fileInfo.maxchunk);
+            const totalChunks = maxChunk + 1;
+            const roomId = fileInfo.RoomId;
+            
+            console.log('Max chunk response:', fileInfo);
+            
+            if (maxChunkData.code === 2) {
+                // File already saved
+                console.log('File already saved:', fileName);
+                this.showToast('File already downloaded: ' + fileName, 'info');
+                this.activeDownloads.delete(fileId);
+                this.updateDownloadButtonStates();
+                return;
+            }
+            
+            // Initialize download progress
+            this.downloadProgress.set(fileId, {
+                fileName: fileName,
+                roomId: roomId,
+                currentChunk: 0,
+                totalChunks: totalChunks,
+                progress: 0
+            });
+            
+            this.updateDownloadProgressDisplay();
+            
+            // Start chunk assembly from chunk 0
+            this.assembleNextChunk(fileId, fileName, 0, totalChunks);
+        }
+    }
+
+    assembleNextChunk(fileId, fileName, chunkIndex, totalChunks) {
+        console.log(`Assembling chunk ${chunkIndex} of ${totalChunks} for file: ${fileName}`);
+        
+        const requestData = {
+            action: 'chunk_assemble',
+            username: this.username,
+            sessionid: this.sessionId,
+            chunkIndex: chunkIndex,
+            totalChunks: totalChunks,
+            fileName: fileName,
+            fileId: fileId
+        };
+        
+        this.sendMessage(JSON.stringify(requestData));
+    }
+
+    handleChunkAssembleResponse(responseData) {
+        const assembleData = responseData.phpOutput.chunk_assemble;
+        
+        if (assembleData.status === 'success') {
+            const fileId = parseInt(assembleData.fileId);
+            const chunkIndex = parseInt(assembleData.chunkIndex);
+            const totalChunks = parseInt(assembleData.totalChunks);
+            const fileName = assembleData.fileName;
+            
+            console.log('Chunk assemble response:', assembleData);
+            
+            // Update progress
+            if (this.downloadProgress.has(fileId)) {
+                const progress = this.downloadProgress.get(fileId);
+                progress.currentChunk = chunkIndex + 1;
+                progress.progress = Math.round((progress.currentChunk / totalChunks) * 100);
+                this.updateDownloadProgressDisplay();
+            }
+            
+            if (chunkIndex === totalChunks) {
+                // Final assembly complete
+                console.log('Download completed for file:', fileName);
+                this.showToast('Download completed: ' + fileName, 'success');
+                
+                // Clean up
+                this.downloadProgress.delete(fileId);
+                this.activeDownloads.delete(fileId);
+                this.updateDownloadProgressDisplay();
+                this.updateDownloadButtonStates();
+            } else {
+                // Continue with next chunk
+                this.assembleNextChunk(fileId, fileName, chunkIndex + 1, totalChunks);
+            }
+        } else {
+            console.error('Chunk assemble failed:', assembleData);
+            const fileId = parseInt(assembleData.fileId);
+            this.showToast('Download failed for file: ' + assembleData.fileName, 'error');
+            
+            // Clean up on error
+            this.downloadProgress.delete(fileId);
+            this.activeDownloads.delete(fileId);
+            this.updateDownloadProgressDisplay();
+            this.updateDownloadButtonStates();
+        }
+    }
+
+    updateDownloadProgressDisplay() {
+        const panelContent = this.notificationPanel.querySelector('.notification-panel-content');
+        
+        // Remove existing download progress items
+        const existingDownloads = panelContent.querySelectorAll('.download-progress-item');
+        existingDownloads.forEach(item => item.remove());
+        
+        // Add current download progress items
+        this.downloadProgress.forEach((progress, fileId) => {
+            const progressItem = document.createElement('div');
+            progressItem.className = 'download-progress-item';
+            progressItem.innerHTML = `
+                <div class="upload-info">
+                    <div class="upload-header">
+                        <div class="upload-icon">📥</div>
+                        <div class="upload-details">
+                            <div class="upload-filename">${progress.fileName}</div>
+                            <div class="upload-room">Room ${progress.roomId}</div>
+                        </div>
+                        <div class="upload-percentage">${progress.progress}%</div>
+                    </div>
+                    <div class="upload-progress-bar">
+                        <div class="upload-progress-fill" style="width: ${progress.progress}%"></div>
+                    </div>
+                    <div class="upload-stats">
+                        <span>Chunk ${progress.currentChunk}/${progress.totalChunks}</span>
+                        <span>Downloading...</span>
+                    </div>
+                </div>
+            `;
+            panelContent.appendChild(progressItem);
+        });
+    }
+
+    updateDownloadButtonStates() {
+        // Update all download buttons based on current state
+        const downloadButtons = document.querySelectorAll('.message-file-download');
+        downloadButtons.forEach(button => {
+            const onclick = button.getAttribute('onclick');
+            if (onclick) {
+                const match = onclick.match(/downloadFile\((\d+),/);
+                if (match) {
+                    const fileId = parseInt(match[1]);
+                    const isDisabled = this.activeDownloads.has(fileId) || this.uploadProgress.has(fileId);
+                    button.disabled = isDisabled;
+                }
+            }
+        });
     }
 }
 

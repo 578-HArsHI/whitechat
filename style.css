@@ -615,6 +615,31 @@ body {
     color: var(--text-muted);
 }
 
+/* Download Progress Styles */
+.download-progress-item {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.download-progress-item:last-child {
+    margin-bottom: 0;
+}
+
+.download-progress-item .upload-icon {
+    color: #10b981;
+}
+
+.download-progress-item .upload-percentage {
+    color: #10b981;
+}
+
+.download-progress-item .upload-progress-fill {
+    background: linear-gradient(90deg, #10b981, #059669);
+}
+
 /* Settings Dropdown */
 .settings-container {
     position: relative;
