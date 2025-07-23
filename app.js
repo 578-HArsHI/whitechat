@@ -749,25 +749,47 @@ class WebSocketChat {
                 content.appendChild(progressItem);
             }
             
-            progressItem.innerHTML = `
-                <div class="upload-info">
-                    <div class="upload-header">
-                        <div class="upload-icon">📤</div>
-                        <div class="upload-details">
-                            <div class="upload-filename">${this.escapeHtml(progress.fileName)}</div>
-                            <div class="upload-room">Room : ${this.escapeHtml(progress.roomName)}</div>
+            if (progress.currentChunk == progress.totalChunks) {
+                progressItem.innerHTML = `
+                    <div class="upload-info">
+                        <div class="upload-header">
+                            <div class="upload-icon">📤</div>
+                            <div class="upload-details">
+                                <div class="upload-filename">${this.escapeHtml(progress.fileName)}</div>
+                                <div class="upload-room">Room : ${this.escapeHtml(progress.roomName)}</div>
+                            </div>
+                            <div class="upload-percentage">${progress.percentage}%</div>
                         </div>
-                        <div class="upload-percentage">${progress.percentage}%</div>
+                        
+                            <a href="#" class="upload-link" onclick="window.chatApp.downloadFilePOST('${fileId}', '${this.username}', '${this.sessionId}'); return false;">Click here to download</a>
+
+                        <div class="upload-stats">
+                            <span>Chunk ${progress.currentChunk}/${progress.totalChunks}</span>
+                            <span>${this.formatFileSize(progress.fileSize)}</span>
+                        </div>
                     </div>
-                    <div class="upload-progress-bar">
-                        <div class="upload-progress-fill" style="width: ${progress.percentage}%"></div>
+                `;
+            } else {
+                progressItem.innerHTML = `
+                    <div class="upload-info">
+                        <div class="upload-header">
+                            <div class="upload-icon">📤</div>
+                            <div class="upload-details">
+                                <div class="upload-filename">${this.escapeHtml(progress.fileName)}</div>
+                                <div class="upload-room">Room : ${this.escapeHtml(progress.roomName)}</div>
+                            </div>
+                            <div class="upload-percentage">${progress.percentage}%</div>
+                        </div>
+                        <div class="upload-progress-bar">
+                            <div class="upload-progress-fill" style="width: ${progress.percentage}%"></div>
+                        </div>
+                        <div class="upload-stats">
+                            <span>Chunk ${progress.currentChunk}/${progress.totalChunks}</span>
+                            <span>${this.formatFileSize(progress.fileSize)}</span>
+                        </div>
                     </div>
-                    <div class="upload-stats">
-                        <span>Chunk ${progress.currentChunk}/${progress.totalChunks}</span>
-                        <span>${this.formatFileSize(progress.fileSize)}</span>
-                    </div>
-                </div>
-            `;
+                `;
+            }
         });
     }
 
@@ -1697,7 +1719,7 @@ class WebSocketChat {
             console.log('Chunk assemble response:', this.downloadProgress);
             
             // Update progress
-            if (this.downloadProgress.has(fileId)) {
+            if (this.downloadProgress.has(fileId) && chunkIndex != totalChunks) {
                 const progress = this.downloadProgress.get(fileId);
                 progress.currentChunk = chunkIndex + 1;
                 progress.percentage = Math.round((progress.currentChunk / totalChunks) * 100);
@@ -1766,7 +1788,7 @@ class WebSocketChat {
                             <div class="upload-percentage">${progress.percentage}%</div>
                         </div>
                         
-                            <a href="#" onclick="window.chatApp.downloadFilePOST('${fileId}', '${this.username}', '${this.sessionId}'); return false;">Click here to download</a>
+                            <a href="#" class="download-link" onclick="window.chatApp.downloadFilePOST('${fileId}', '${this.username}', '${this.sessionId}'); return false;">Click here to download</a>
                         
                         <div class="upload-stats">
                             <span>Chunk ${progress.currentChunk}/${progress.totalChunks}</span>
