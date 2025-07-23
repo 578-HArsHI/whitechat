@@ -22,7 +22,6 @@ class WebSocketChat {
         this.searchQuery = '';
         this.selectedFiles = [];
         this.pendingFiles = [];
-        this.pendingFiles = [];
         
         // Add remove all files button event
         this.removeAllFilesBtn = document.getElementById('removeAllFilesBtn');
@@ -32,6 +31,9 @@ class WebSocketChat {
         
         // File upload tracking
         this.uploadProgress = new Map(); // Track upload progress for each file
+        this.downloadProgress = new Map(); // Track download progress for each file
+        this.activeUploads = new Set(); // Track active uploads progress for all file
+        this.activeDownloads = new Set(); // Track active download progress for all file
         this.CHUNK_SIZE = 15 * 1024 * 1024; // 15 MB
         
         this.initializeElements();
@@ -410,7 +412,7 @@ class WebSocketChat {
      * Handle server response
      */
     handleServerResponse(data) {
-        console.log('Processing server response:', data);
+        // console.log('Processing server response:', data);
         
         const { phpOutput, originalData, status } = data;
         
@@ -447,6 +449,16 @@ class WebSocketChat {
         // Handle receiver sessions (incoming messages)
         if (phpOutput.get_receiver_sessions) {
             this.handleIncomingMessage(phpOutput.get_receiver_sessions);
+        }
+
+        // Handle max_chunkindex response
+        if (phpOutput.get_max_chunkindex) {
+            this.handleMaxChunkIndexResponse(data);
+        }
+        
+        // Handle chunk assemble response
+        if (phpOutput.chunk_assemble) {
+            this.handleChunkAssembleResponse(data);
         }
     }
 
@@ -582,10 +594,9 @@ class WebSocketChat {
      */
     sendFileInChunks(file, fileId) {
         const totalChunks = Math.ceil(file.size / this.CHUNK_SIZE);
-        
-        // Initialize progress tracking
-        const progressKey = `${fileId}_${file.name}`;
-        this.uploadProgress.set(progressKey, {
+
+        this.activeUploads.add(fileId);
+        this.uploadProgress.set(fileId, {
             fileId: fileId,
             fileName: file.name,
             roomName: this.currentChatName,
@@ -655,7 +666,6 @@ class WebSocketChat {
      * Handle chunk upload response
      */
     handleChunkUploadResponse(chunkData) {
-        console.log('Handling chunk upload response:', chunkData);
         
         if (chunkData.status === 'success') {
             const fileId = chunkData.fileId;
@@ -668,8 +678,8 @@ class WebSocketChat {
             
             if (pendingChunk) {
                 // Update progress
-                const progressKey = `${fileId}_${pendingChunk.file.name}`;
-                const progress = this.uploadProgress.get(progressKey);
+                console.log('chunk upload response:', this.uploadProgress);
+                const progress = this.uploadProgress.get(fileId);
                 
                 if (progress) {
                     progress.currentChunk = chunkIndex + 1;
@@ -685,11 +695,10 @@ class WebSocketChat {
                     console.log(`File upload completed: ${pendingChunk.file.name}`);
                     this.showNotificationToast('Upload Complete', `${pendingChunk.file.name} uploaded successfully`);
                     
-                    // Remove from progress tracking after a delay
-                    setTimeout(() => {
-                        this.uploadProgress.delete(progressKey);
-                        this.updateUploadProgressDisplay();
-                    }, 2000);
+                    this.uploadProgress.delete(fileId);
+                    this.activeUploads.delete(fileId);
+                    this.updateUploadProgressDisplay();
+                    this.updateDownloadButtonStates();
                 }
                 
                 // Clean up pending chunk
@@ -698,6 +707,10 @@ class WebSocketChat {
         } else {
             console.error('Chunk upload failed:', chunkData);
             this.showToast('Chunk upload failed', 'error');
+            this.uploadProgress.delete(fileId);
+            this.activeUploads.delete(fileId);
+            this.updateUploadProgressDisplay();
+            this.updateDownloadButtonStates();
         }
     }
 
@@ -716,13 +729,13 @@ class WebSocketChat {
         if (uploadCount === 0) return;
         
         // Create or find upload section
-        let uploadSection = content.querySelector('.upload-section');
-        if (!uploadSection) {
-            uploadSection = document.createElement('div');
-            uploadSection.className = 'upload-section';
-            uploadSection.innerHTML = '<h4>File Uploads</h4>';
-            content.appendChild(uploadSection);
-        }
+        // let uploadSection = content.querySelector('.upload-section');
+        // if (!uploadSection) {
+            // uploadSection = document.createElement('div');
+            // uploadSection.className = 'upload-section';
+            // uploadSection.innerHTML = '<h4>File Uploads</h4>';
+            // content.appendChild(uploadSection);
+        // }
         
         this.uploadProgress.forEach((progress, fileId) => {
             // Check if progress item already exists
@@ -736,20 +749,18 @@ class WebSocketChat {
                 content.appendChild(progressItem);
             }
             
-            const percentage = progress.percentage;
-            
             progressItem.innerHTML = `
                 <div class="upload-info">
                     <div class="upload-header">
-                        <div class="upload-icon">📁</div>
+                        <div class="upload-icon">📤</div>
                         <div class="upload-details">
                             <div class="upload-filename">${this.escapeHtml(progress.fileName)}</div>
-                            <div class="upload-room">Room: ${this.escapeHtml(progress.roomName)}</div>
+                            <div class="upload-room">Room : ${this.escapeHtml(progress.roomName)}</div>
                         </div>
-                        <div class="upload-percentage">${percentage}%</div>
+                        <div class="upload-percentage">${progress.percentage}%</div>
                     </div>
                     <div class="upload-progress-bar">
-                        <div class="upload-progress-fill" style="width: ${percentage}%"></div>
+                        <div class="upload-progress-fill" style="width: ${progress.percentage}%"></div>
                     </div>
                     <div class="upload-stats">
                         <span>Chunk ${progress.currentChunk}/${progress.totalChunks}</span>
@@ -1126,26 +1137,15 @@ class WebSocketChat {
                 <div class="chat-item-content">
                     <div class="chat-item-header">
                         <div class="chat-item-name">${chat.Name}</div>
-            
-            // Check if file is currently being uploaded or downloaded
-            const isUploading = this.uploadProgress.has(file.id);
-            const isDownloading = this.activeDownloads.has(file.id);
-            const isDisabled = isUploading || isDownloading;
                         <div class="chat-item-time">${this.formatTime(chat.Status)}</div>
+                    </div>
+                    <div class="chat-item-preview">
+                        <span>${chat.MsgTxt || 'No messages yet'}</span>
+                        ${unreadBadge}
+                    </div>
                 </div>
             `;
-            
-            // Add click event listener for download button
-            const downloadBtn = fileElement.querySelector('.message-file-download');
-            if (downloadBtn && !isDisabled) {
-                downloadBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const fileId = downloadBtn.dataset.fileId;
-                    const fileName = downloadBtn.dataset.fileName;
-                    this.downloadFile(fileId, fileName);
-                });
-            }
-            
+
             chatItem.addEventListener('click', () => {
                 this.selectChat(chat.RoomId, chat.Name, isOnline);
             });
@@ -1231,18 +1231,30 @@ class WebSocketChat {
         
         // Get files for this message
         const messageFiles = this.messageFiles ? this.messageFiles.filter(file => parseInt(file.MsgId) === parseInt(message.MsgId)) : [];
+        const enrichedFiles = messageFiles.map(file => {
+            const isUploading = this.uploadProgress?.has(file.FileId) ?? false;
+            const isDownloading = this.downloadProgress?.has(file.FileId) ?? false;
+            const isDisabled = isUploading || isDownloading;
         
+            return { ...file, isUploading, isDownloading, isDisabled };
+        });
         let filesHtml = '';
-        if (messageFiles.length > 0) {
+        if (enrichedFiles.length > 0) {
             filesHtml = `
                 <div class="message-files">
-                    ${messageFiles.map(file => `
+                    ${enrichedFiles.map(file => `
                         <div class="message-file">
                             <div class="message-file-icon">📎</div>
                             <div class="message-file-info">
                                 <div class="message-file-name">${this.escapeHtml(file.FileName)}</div>
                                 <div class="message-file-size">${file.FileSize}</div>
                             </div>
+                            <button class="message-file-download" 
+                                data-file-id="${file.FileId}" 
+                                data-file-name="${file.FileName}" 
+                                ${file.isDisabled ? 'disabled' : ''}>
+                                📥
+                            </button>
                         </div>
                     `).join('')}
                 </div>
@@ -1259,7 +1271,19 @@ class WebSocketChat {
                 ${filesHtml}
             </div>
         `;
-        
+        // ✅ Add download click listeners ONLY IF there are messageFiles
+        if (messageFiles.length > 0) {
+            setTimeout(() => {
+                messageEl.querySelectorAll('.message-file-download').forEach((btn) => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const fileId = btn.dataset.fileId;
+                        const fileName = btn.dataset.fileName;
+                        this.downloadFile(fileId, fileName);
+                    });
+                });
+            }, 0);
+        }
         return messageEl;
     }
 
@@ -1358,7 +1382,8 @@ class WebSocketChat {
         this.clearSearchBtn.style.display = 'none';
         this.selectedFiles = [];
         this.renderFileList();
-        
+        this.hideNotificationPanel()
+        this.notificationPanel.querySelector('.notification-panel-content').innerHTML = '';
         // Reset filter tabs
         this.filterTabs.forEach(tab => {
             tab.classList.toggle('active', tab.dataset.filter == 'all');
@@ -1572,17 +1597,19 @@ class WebSocketChat {
         this.updateDownloadButtonStates();
         
         // Show notification panel
-        this.notificationPanel.classList.add('show');
+        this.showNotificationPanel();
         
         // Send get_max_chunkindex request
         const requestData = {
             action: 'get_max_chunkindex',
             username: this.username,
             sessionid: this.sessionId,
-            fileId: fileId.toString()
+            fileId: fileId,
+            batchId: this.generateBatchId(),
+            requestId: this.generateBatchId()
         };
         
-        this.sendMessage(JSON.stringify(requestData));
+        this.sendJSON(requestData);
     }
 
     handleMaxChunkIndexResponse(responseData) {
@@ -1594,14 +1621,26 @@ class WebSocketChat {
             const fileName = fileInfo.FileName;
             const maxChunk = parseInt(fileInfo.maxchunk);
             const totalChunks = maxChunk + 1;
-            const roomId = fileInfo.RoomId;
+            const fileSize = fileInfo.FileSize;
             
             console.log('Max chunk response:', fileInfo);
             
             if (maxChunkData.code === 2) {
+                // Initialize download progress
+                this.downloadProgress.set(fileId, {
+                    fileId: fileId,
+                    fileName: fileName,
+                    roomName: this.currentChatName,
+                    fileSize: fileSize,
+                    totalChunks: totalChunks,
+                    currentChunk: totalChunks,
+                    percentage: 100
+                });
                 // File already saved
                 console.log('File already saved:', fileName);
-                this.showToast('File already downloaded: ' + fileName, 'info');
+                this.showNotificationToast('File ready to download: ' + fileName, 'info');
+                this.updateDownloadProgressDisplay();
+                this.downloadProgress.delete(fileId);
                 this.activeDownloads.delete(fileId);
                 this.updateDownloadButtonStates();
                 return;
@@ -1609,11 +1648,13 @@ class WebSocketChat {
             
             // Initialize download progress
             this.downloadProgress.set(fileId, {
+                fileId: fileId,
                 fileName: fileName,
-                roomId: roomId,
-                currentChunk: 0,
+                roomName: this.currentChatName,
+                fileSize: fileSize,
                 totalChunks: totalChunks,
-                progress: 0
+                currentChunk: 0,
+                percentage: 0
             });
             
             this.updateDownloadProgressDisplay();
@@ -1633,12 +1674,17 @@ class WebSocketChat {
             chunkIndex: chunkIndex,
             totalChunks: totalChunks,
             fileName: fileName,
-            fileId: fileId
+            fileId: fileId,
+            batchId: this.generateBatchId(),
+            requestId: this.generateBatchId()
         };
         
-        this.sendMessage(JSON.stringify(requestData));
+        this.sendJSON(requestData);
     }
 
+    /**
+     * Handle chunk assemble response
+     */
     handleChunkAssembleResponse(responseData) {
         const assembleData = responseData.phpOutput.chunk_assemble;
         
@@ -1648,20 +1694,20 @@ class WebSocketChat {
             const totalChunks = parseInt(assembleData.totalChunks);
             const fileName = assembleData.fileName;
             
-            console.log('Chunk assemble response:', assembleData);
+            console.log('Chunk assemble response:', this.downloadProgress);
             
             // Update progress
             if (this.downloadProgress.has(fileId)) {
                 const progress = this.downloadProgress.get(fileId);
                 progress.currentChunk = chunkIndex + 1;
-                progress.progress = Math.round((progress.currentChunk / totalChunks) * 100);
+                progress.percentage = Math.round((progress.currentChunk / totalChunks) * 100);
                 this.updateDownloadProgressDisplay();
             }
             
             if (chunkIndex === totalChunks) {
                 // Final assembly complete
                 console.log('Download completed for file:', fileName);
-                this.showToast('Download completed: ' + fileName, 'success');
+                this.showNotificationToast('Download complete: ' + fileName, 'downloaded successfully');
                 
                 // Clean up
                 this.downloadProgress.delete(fileId);
@@ -1686,53 +1732,122 @@ class WebSocketChat {
     }
 
     updateDownloadProgressDisplay() {
-        const panelContent = this.notificationPanel.querySelector('.notification-panel-content');
+        if (!this.notificationPanel) return;
+        
+        const content = this.notificationPanel.querySelector('.notification-panel-content');
+        if (!content) return;
         
         // Remove existing download progress items
-        const existingDownloads = panelContent.querySelectorAll('.download-progress-item');
-        existingDownloads.forEach(item => item.remove());
+        // const existingDownloads = panelContent.querySelectorAll('.download-progress-item');
+        // existingDownloads.forEach(item => item.remove());
         
         // Add current download progress items
         this.downloadProgress.forEach((progress, fileId) => {
-            const progressItem = document.createElement('div');
-            progressItem.className = 'download-progress-item';
-            progressItem.innerHTML = `
-                <div class="upload-info">
-                    <div class="upload-header">
-                        <div class="upload-icon">📥</div>
-                        <div class="upload-details">
-                            <div class="upload-filename">${progress.fileName}</div>
-                            <div class="upload-room">Room ${progress.roomId}</div>
+            // Check if progress item already exists
+            let progressItem = content.querySelector(`[data-file-id="${fileId}"]`);
+
+            if (!progressItem) {
+                // Create new progress item
+                progressItem = document.createElement('div');
+                progressItem.className = 'download-progress-item';
+                progressItem.dataset.fileId = fileId;
+                content.appendChild(progressItem);
+            }
+
+            if (progress.currentChunk >= progress.totalChunks) {
+                progressItem.innerHTML = `
+                    <div class="upload-info">
+                        <div class="upload-header">
+                            <div class="upload-icon">📥</div>
+                            <div class="upload-details">
+                                <div class="upload-filename">${progress.fileName}</div>
+                                <div class="upload-room">Room : ${progress.roomName}</div>
+                            </div>
+                            <div class="upload-percentage">${progress.percentage}%</div>
                         </div>
-                        <div class="upload-percentage">${progress.progress}%</div>
+                        
+                            <a href="#" onclick="window.chatApp.downloadFilePOST('${fileId}', '${this.username}', '${this.sessionId}'); return false;">Click here to download</a>
+                        
+                        <div class="upload-stats">
+                            <span>Chunk ${progress.currentChunk}/${progress.totalChunks}</span>
+                            <span>${progress.fileSize}</span>
+                        </div>
                     </div>
-                    <div class="upload-progress-bar">
-                        <div class="upload-progress-fill" style="width: ${progress.progress}%"></div>
+                `;
+            } else {
+                progressItem.innerHTML = `
+                    <div class="upload-info">
+                        <div class="upload-header">
+                            <div class="upload-icon">📥</div>
+                            <div class="upload-details">
+                                <div class="upload-filename">${progress.fileName}</div>
+                                <div class="upload-room">Room : ${progress.roomName}</div>
+                            </div>
+                            <div class="upload-percentage">${progress.percentage}%</div>
+                        </div>
+                        <div class="upload-progress-bar">
+                            <div class="upload-progress-fill" style="width: ${progress.percentage}%"></div>
+                        </div>
+                        <div class="upload-stats">
+                            <span>Chunk ${progress.currentChunk}/${progress.totalChunks}</span>
+                            <span>${progress.fileSize}</span>
+                        </div>
                     </div>
-                    <div class="upload-stats">
-                        <span>Chunk ${progress.currentChunk}/${progress.totalChunks}</span>
-                        <span>Downloading...</span>
-                    </div>
-                </div>
-            `;
-            panelContent.appendChild(progressItem);
+                `;
+            }
+            content.appendChild(progressItem);
         });
     }
 
+    // updateDownloadButtonStates() {
+    //     // Update all download buttons based on current state
+    //     const downloadButtons = document.querySelectorAll('.message-file-download');
+    //     downloadButtons.forEach(button => {
+    //         const onclick = button.getAttribute('onclick');
+    //         if (onclick) {
+    //             const match = onclick.match(/downloadFile\((\d+),/);
+    //             if (match) {
+    //                 const fileId = parseInt(match[1]);
+    //                 const isDisabled = this.downloadProgress.has(fileId) || this.uploadProgress.has(fileId);
+    //                 button.disabled = isDisabled;
+    //             }
+    //         }
+    //     });
+    // }
     updateDownloadButtonStates() {
-        // Update all download buttons based on current state
         const downloadButtons = document.querySelectorAll('.message-file-download');
         downloadButtons.forEach(button => {
-            const onclick = button.getAttribute('onclick');
-            if (onclick) {
-                const match = onclick.match(/downloadFile\((\d+),/);
-                if (match) {
-                    const fileId = parseInt(match[1]);
-                    const isDisabled = this.activeDownloads.has(fileId) || this.uploadProgress.has(fileId);
-                    button.disabled = isDisabled;
-                }
-            }
+            const fileId = parseInt(button.getAttribute('data-file-id'));
+            const isDisabled = this.downloadProgress.has(fileId) || this.uploadProgress.has(fileId);
+            button.disabled = isDisabled;
         });
+    }
+
+    downloadFilePOST(fileId, username, sessionid) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = 'http://localhost:8000/chatapi.php';
+        form.target = '_blank'; // Opens in new tab (like <a target="_blank">)
+      
+        form.style.display = 'none';
+      
+        const jsonPayload = {
+          action: 'file_download',
+          fileId,
+          username,
+          sessionid
+        };
+      
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'json';
+        input.value = JSON.stringify(jsonPayload);
+        console.log('jsonPayload', jsonPayload);
+        form.appendChild(input);
+        console.log('form', form);
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
     }
 }
 
