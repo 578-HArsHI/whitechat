@@ -615,6 +615,18 @@ body {
     color: var(--text-muted);
 }
 
+.download-link {
+    color: #10b981; /* Green */
+    /* text-decoration: underline;
+    font-weight: bold; */
+}
+
+.upload-link {
+    color: #FD3DB5; /* Green */
+    /* text-decoration: underline;
+    font-weight: bold; */
+}
+
 /* Download Progress Styles */
 .download-progress-item {
     background: var(--bg-secondary);
