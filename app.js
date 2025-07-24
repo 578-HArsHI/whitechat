@@ -35,6 +35,8 @@ class WebSocketChat {
         this.activeUploads = new Set(); // Track active uploads progress for all file
         this.activeDownloads = new Set(); // Track active download progress for all file
         this.CHUNK_SIZE = 15 * 1024 * 1024; // 15 MB
+        this.maxConcurrentUploads = 15;
+        this.maxConcurrentDownloads = 15;
         
         this.initializeElements();
         this.attachEventListeners();
@@ -457,7 +459,7 @@ class WebSocketChat {
         }
         
         // Handle chunk assemble response
-        if (phpOutput.chunk_assemble) {
+        if (phpOutput.chunk_assemble || phpOutput.chunk_append) {
             this.handleChunkAssembleResponse(data);
         }
     }
@@ -1644,6 +1646,7 @@ class WebSocketChat {
             const maxChunk = parseInt(fileInfo.maxchunk);
             const totalChunks = maxChunk + 1;
             const fileSize = fileInfo.FileSize;
+            const fileBytes = fileInfo.fileBytes;
             
             console.log('Max chunk response:', fileInfo);
             
@@ -1674,6 +1677,7 @@ class WebSocketChat {
                 fileName: fileName,
                 roomName: this.currentChatName,
                 fileSize: fileSize,
+                fileBytes: fileBytes,
                 totalChunks: totalChunks,
                 currentChunk: 0,
                 percentage: 0
@@ -1682,11 +1686,11 @@ class WebSocketChat {
             this.updateDownloadProgressDisplay();
             
             // Start chunk assembly from chunk 0
-            this.assembleNextChunk(fileId, fileName, 0, totalChunks);
+            this.assembleNextChunk(fileId, fileName, 0, totalChunks, fileBytes);
         }
     }
 
-    assembleNextChunk(fileId, fileName, chunkIndex, totalChunks) {
+    assembleNextChunk(fileId, fileName, chunkIndex, totalChunks, fileBytes) {
         console.log(`Assembling chunk ${chunkIndex} of ${totalChunks} for file: ${fileName}`);
         
         const requestData = {
@@ -1696,11 +1700,35 @@ class WebSocketChat {
             chunkIndex: chunkIndex,
             totalChunks: totalChunks,
             fileName: fileName,
+            fileBytes: fileBytes,
             fileId: fileId,
             batchId: this.generateBatchId(),
             requestId: this.generateBatchId()
         };
+
+        // Launch the first batch:
+        // for (let i = 0; i < maxConcurrentRequests; i++) {
+        //     this.sendJSON(requestData);
+        // }
+        this.sendJSON(requestData);
+    }
+
+    requestNextChunk(fileId, fileName, chunkIndex, totalChunks, fileBytes) {
+        console.log(`Assembling chunk ${chunkIndex} of ${totalChunks} for file: ${fileName}`);
         
+        const requestData = {
+            action: 'chunk_assemble',
+            username: this.username,
+            sessionid: this.sessionId,
+            chunkIndex: chunkIndex,
+            totalChunks: totalChunks,
+            fileName: fileName,
+            fileBytes: fileBytes,
+            fileId: fileId,
+            batchId: this.generateBatchId(),
+            requestId: this.generateBatchId()
+        };
+
         this.sendJSON(requestData);
     }
 
@@ -1708,13 +1736,14 @@ class WebSocketChat {
      * Handle chunk assemble response
      */
     handleChunkAssembleResponse(responseData) {
-        const assembleData = responseData.phpOutput.chunk_assemble;
+        const assembleData = responseData.phpOutput.chunk_assemble ?? responseData.phpOutput.chunk_append;
         
         if (assembleData.status === 'success') {
             const fileId = parseInt(assembleData.fileId);
             const chunkIndex = parseInt(assembleData.chunkIndex);
             const totalChunks = parseInt(assembleData.totalChunks);
             const fileName = assembleData.fileName;
+            const fileBytes = assembleData.fileBytes;
             
             console.log('Chunk assemble response:', this.downloadProgress);
             
@@ -1738,7 +1767,7 @@ class WebSocketChat {
                 this.updateDownloadButtonStates();
             } else {
                 // Continue with next chunk
-                this.assembleNextChunk(fileId, fileName, chunkIndex + 1, totalChunks);
+                this.assembleNextChunk(fileId, fileName, chunkIndex + 1, totalChunks, fileBytes);
             }
         } else {
             console.error('Chunk assemble failed:', assembleData);
