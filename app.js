@@ -392,7 +392,7 @@ class WebSocketChat {
     handleMessage(event) {
         try {
             const data = JSON.parse(event.data);
-            console.log('Received message:', data);
+            // console.log('Received message:', data);
             
             // Check if we have a valid response structure
             if (data && (data.phpOutput || data.status)) {
@@ -799,7 +799,7 @@ class WebSocketChat {
      * Handle incoming message
      */
     handleIncomingMessage(receiverData) {
-        console.log('Handling incoming message:', receiverData);
+        // console.log('Handling incoming message:', receiverData);
         
         if (receiverData.receiver_sessions && receiverData.receiver_sessions.length > 0) {
             const session = receiverData.receiver_sessions[0];
@@ -1488,7 +1488,7 @@ class WebSocketChat {
     sendJSON(data) {
         if (this.ws && this.ws.readyState == WebSocket.OPEN) {
             this.ws.send(JSON.stringify(data));
-            console.log('Sent:', data);
+            // console.log('Sent:', data);
         } else {
             console.error('WebSocket not connected, readyState:', this.ws ? this.ws.readyState : 'null');
             this.showToast('Connection lost. Reconnecting...', 'warning');
@@ -1679,14 +1679,20 @@ class WebSocketChat {
                 fileSize: fileSize,
                 fileBytes: fileBytes,
                 totalChunks: totalChunks,
+                ConcurrentChunk: this.maxConcurrentDownloads - 1,
                 currentChunk: 0,
                 percentage: 0
             });
             
             this.updateDownloadProgressDisplay();
             
+            // Launch the first batch:
+            for (let i = 0; i < this.maxConcurrentDownloads; i++) {
+                // Start chunk assembly from chunk 0
+                this.assembleNextChunk(fileId, fileName, i, totalChunks, fileBytes);
+            }
             // Start chunk assembly from chunk 0
-            this.assembleNextChunk(fileId, fileName, 0, totalChunks, fileBytes);
+            // this.assembleNextChunk(fileId, fileName, i, totalChunks, fileBytes);
         }
     }
 
@@ -1707,7 +1713,8 @@ class WebSocketChat {
         };
 
         // Launch the first batch:
-        // for (let i = 0; i < maxConcurrentRequests; i++) {
+        // for (let i = 0; i < this.maxConcurrentDownloads; i++) {
+        //     requestData.chunkIndex = i;
         //     this.sendJSON(requestData);
         // }
         this.sendJSON(requestData);
@@ -1737,41 +1744,56 @@ class WebSocketChat {
      */
     handleChunkAssembleResponse(responseData) {
         const assembleData = responseData.phpOutput.chunk_assemble ?? responseData.phpOutput.chunk_append;
+        const fileId = parseInt(assembleData.fileId);
         
-        if (assembleData.status === 'success') {
-            const fileId = parseInt(assembleData.fileId);
-            const chunkIndex = parseInt(assembleData.chunkIndex);
-            const totalChunks = parseInt(assembleData.totalChunks);
-            const fileName = assembleData.fileName;
-            const fileBytes = assembleData.fileBytes;
+        if (this.downloadProgress.has(fileId) && assembleData.status === 'success') {
+            const progress = this.downloadProgress.get(fileId);
+            const chunkIndex = progress.currentChunk;
+            const totalChunks = progress.totalChunks;
+            const ConcurrentChunk = progress.ConcurrentChunk;
+            const fileName = progress.fileName;
+            const fileBytes = progress.fileBytes;
             
-            console.log('Chunk assemble response:', this.downloadProgress);
+            // console.log('Chunk assemble response:', this.downloadProgress);
+            console.log('chunkIndex:', chunkIndex, 'ConcurrentChunk:', ConcurrentChunk);
             
-            // Update progress
-            if (this.downloadProgress.has(fileId) && chunkIndex != totalChunks) {
-                const progress = this.downloadProgress.get(fileId);
-                progress.currentChunk = chunkIndex + 1;
-                progress.percentage = Math.round((progress.currentChunk / totalChunks) * 100);
-                this.updateDownloadProgressDisplay();
-            }
-            
-            if (chunkIndex === totalChunks) {
+            if (chunkIndex == totalChunks) {
                 // Final assembly complete
                 console.log('Download completed for file:', fileName);
                 this.showNotificationToast('Download complete: ' + fileName, 'downloaded successfully');
-                
                 // Clean up
-                this.downloadProgress.delete(fileId);
-                this.activeDownloads.delete(fileId);
+                // this.downloadProgress.delete(fileId);
+                // this.activeDownloads.delete(fileId);
                 this.updateDownloadProgressDisplay();
                 this.updateDownloadButtonStates();
-            } else {
+            } 
+            else 
+            if (chunkIndex < (totalChunks - this.maxConcurrentDownloads)) {
+                this.updateDownloadProgressDisplay();
+                progress.currentChunk++;
+                progress.ConcurrentChunk++;
+                progress.percentage = Math.round((progress.currentChunk / totalChunks) * 100);
                 // Continue with next chunk
-                this.assembleNextChunk(fileId, fileName, chunkIndex + 1, totalChunks, fileBytes);
+                this.assembleNextChunk(fileId, fileName, progress.ConcurrentChunk, totalChunks, fileBytes);
+            } 
+            else 
+            if (chunkIndex < totalChunks) {
+                this.updateDownloadProgressDisplay();
+                progress.currentChunk++;
+                progress.ConcurrentChunk++;
+                progress.percentage = Math.round((progress.currentChunk / totalChunks) * 100);
+                // Continue with last chunk
+                if (chunkIndex == (totalChunks - 1)) {
+                    this.assembleNextChunk(fileId, fileName, chunkIndex + 1, totalChunks, fileBytes);
+                }
+            }
+            else 
+            {
+                console.log('Something is wrong:', fileName);
             }
         } else {
             console.error('Chunk assemble failed:', assembleData);
-            const fileId = parseInt(assembleData.fileId);
+            // const fileId = parseInt(assembleData.fileId);
             this.showToast('Download failed for file: ' + assembleData.fileName, 'error');
             
             // Clean up on error
