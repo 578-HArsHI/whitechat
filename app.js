@@ -1161,7 +1161,7 @@ class WebSocketChat {
                 <div class="chat-item-content">
                     <div class="chat-item-header">
                         <div class="chat-item-name">${chat.Name}</div>
-                        <div class="chat-item-time">${this.formatTime(chat.Status)}</div>
+                        <div class="chat-item-time">${chat.Status}</div>
                     </div>
                     <div class="chat-item-preview">
                         <span>${chat.MsgTxt || 'No messages yet'}</span>
