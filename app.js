@@ -392,7 +392,7 @@ class WebSocketChat {
     handleMessage(event) {
         try {
             const data = JSON.parse(event.data);
-            // console.log('Received message:', data);
+            console.log('Received message:', data);
             
             // Check if we have a valid response structure
             if (data && (data.phpOutput || data.status)) {
@@ -424,7 +424,7 @@ class WebSocketChat {
         }
 
         // Handle login response
-        if (originalData?.action == 'login' || (originalData && originalData.action == 'login')) {
+        if (originalData?.action == 'login' && phpOutput.login) {
             this.handleLoginResponse(phpOutput);
         }
         
@@ -433,7 +433,7 @@ class WebSocketChat {
             this.handleChatsResponse(phpOutput.get_chats);
         }
         
-        // Handle messages response
+        // Handle get messages response
         if (phpOutput.get_messages) {
             this.handleMessagesResponse(phpOutput);
         }
@@ -995,8 +995,7 @@ class WebSocketChat {
         const allCount = this.chats.length;
         const unreadCount = this.chats.filter(chat => chat.Unread > 0).length;
         const groupsCount = this.chats.filter(chat => chat.ChatType == 'Group').length;
-        const onlineCount = this.chats.filter(chat => 
-            chat.Status == 'Online' || chat.Status.includes('Online')
+        const onlineCount = this.chats.filter(chat => chat.Status == 'Online' && chat.ChatType == 'Single'
         ).length;
         
         this.allCount.textContent = `(${allCount})`;
@@ -1106,7 +1105,7 @@ class WebSocketChat {
                     case 'groups':
                         return chat.ChatType == 'Group';
                     case 'online':
-                        return chat.Status == 'Online' || chat.Status.includes('Online');
+                        return chat.Status == 'Online' && chat.ChatType == 'Single'; ;
                     default:
                         return true;
                 }
