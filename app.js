@@ -818,12 +818,12 @@ class WebSocketChat {
      */
     updateChatFromReceiverSession(session) {
         const chatIndex = this.chats.findIndex(chat => chat.RoomId == session.RoomId);
-        
+        console.log('Updating user chat with ReceiverSession:', chatIndex);
         if (chatIndex != -1) {
             // Update existing chat
-            this.chats[chatIndex].MsgTxt = session.MsgTxt;
-            this.chats[chatIndex].Status = session.Sent_at;
-            
+            this.chats[chatIndex].MsgStr = session.MsgStr;
+            this.chats[chatIndex].Status = session.Status;
+            console.log('Updating user chat with ReceiverSession:', session);
             // Only increment unread if it's not the current active chat
             if (session.RoomId != this.currentRoomId) {
                 this.chats[chatIndex].Unread = (this.chats[chatIndex].Unread || 0) + 1;
@@ -846,10 +846,10 @@ class WebSocketChat {
         
         if (chatIndex != -1 && messages.length > 0) {
             const latestMessage = messages[messages.length - 1];
-            
+            console.log('Updating user chat with msg:', latestMessage);
             // Update chat with latest message and reset unread count
-            this.chats[chatIndex].MsgTxt = latestMessage.MsgTxt;
-            this.chats[chatIndex].Status = latestMessage.Sent_At;
+            this.chats[chatIndex].MsgStr = latestMessage.MsgStr;
+            this.chats[chatIndex].Status = latestMessage.Status;
             this.chats[chatIndex].Unread = 0; // Reset unread count when viewing messages
             
             this.updateChatCounts();
@@ -1095,7 +1095,7 @@ class WebSocketChat {
      */
     applyFiltersAndSearch() {
         let filtered = [...this.chats];
-        
+        console.log('applyFiltersAndSearch:', filtered);
         // Apply filter
         if (this.currentFilter != 'all') {
             filtered = filtered.filter(chat => {
@@ -1116,7 +1116,7 @@ class WebSocketChat {
         if (this.searchQuery) {
             filtered = filtered.filter(chat => 
                 chat.Name.toLowerCase().includes(this.searchQuery) ||
-                chat.MsgTxt.toLowerCase().includes(this.searchQuery)
+                chat.MsgStr.toLowerCase().includes(this.searchQuery)
             );
         }
         
@@ -1140,7 +1140,7 @@ class WebSocketChat {
             this.chatList.appendChild(emptyState);
             return;
         }
-        
+        console.log('renderChatList:', this.filteredChats);
         this.filteredChats.forEach(chat => {
             const chatItem = document.createElement('div');
             chatItem.className = 'chat-item';
@@ -1163,7 +1163,7 @@ class WebSocketChat {
                         <div class="chat-item-time">${chat.Status}</div>
                     </div>
                     <div class="chat-item-preview">
-                        <span>${chat.MsgTxt || 'No messages yet'}</span>
+                        <span>${chat.MsgStr}</span>
                         ${unreadBadge}
                     </div>
                 </div>

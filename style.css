@@ -205,7 +205,7 @@ body {
 
 /* Sidebar */
 .sidebar {
-    width: 320px;
+    width: 400px;
     background: var(--bg-secondary);
     border-right: 1px solid var(--border-color);
     display: flex;
