@@ -462,6 +462,11 @@ class WebSocketChat {
         if (phpOutput.chunk_assemble || phpOutput.chunk_append) {
             this.handleChunkAssembleResponse(data);
         }
+
+        // Handle active session response
+        if (phpOutput.get_active_sessions && phpOutput.get_active_sessions.active_sessions && phpOutput.get_active_sessions.online_users) {
+            this.handleOnlineOfflineResponse(phpOutput.get_active_sessions);
+        }
     }
 
     /**
@@ -814,6 +819,37 @@ class WebSocketChat {
     }
 
     /**
+     * Handle active session response
+     */
+    handleOnlineOfflineResponse(responseData) {
+        console.log('handleOnlineOfflineResponse');
+        if (responseData.online_users && responseData.online_users.length > 0) {
+            const chatIndex = responseData.online_users.findIndex(chat => chat.RoomId == this.currentRoomId);
+            
+            this.updateChatFromActiveSession(responseData.online_users);
+
+            if (session.RoomId == this.currentRoomId) {
+                this.loadMessages();
+            }
+        }
+    }
+
+    /**
+     * Update chat from active session response
+     */
+    updateChatFromActiveSession(activeOnline) {
+        console.log('updateChatFromActiveSession', activeOnline);
+
+        activeOnline.forEach(user => {
+            const chatIndex = this.chats.findIndex(chat => chat.RoomId == user.RoomId);
+            this.chats[chatIndex].Status = user.Status;
+            // console.log('activeOnline', this.chats[chatIndex]);
+        });
+        this.updateChatCounts();
+        this.applyFiltersAndSearch();
+    }
+
+    /**
      * Update chat from receiver session (incoming message)
      */
     updateChatFromReceiverSession(session) {
@@ -1095,7 +1131,7 @@ class WebSocketChat {
      */
     applyFiltersAndSearch() {
         let filtered = [...this.chats];
-        console.log('applyFiltersAndSearch:', filtered);
+        // console.log('applyFiltersAndSearch:', filtered);
         // Apply filter
         if (this.currentFilter != 'all') {
             filtered = filtered.filter(chat => {
@@ -1140,7 +1176,7 @@ class WebSocketChat {
             this.chatList.appendChild(emptyState);
             return;
         }
-        console.log('renderChatList:', this.filteredChats);
+        // console.log('renderChatList:', this.filteredChats);
         this.filteredChats.forEach(chat => {
             const chatItem = document.createElement('div');
             chatItem.className = 'chat-item';
