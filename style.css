@@ -899,6 +899,13 @@ body {
     flex-direction: column;
 }
 
+.welcome-container {
+    display: flex;
+    justify-content: center;  /* horizontal center */
+    align-items: center;      /* vertical center */
+    height: 100vh;            /* full viewport height */
+}
+
 .welcome-screen {
     text-align: center;
     max-width: 400px;
@@ -1108,6 +1115,11 @@ body {
 /* Messages */
 .messages-list {
     padding: 1rem;
+    /* flex: 1;
+    overflow-y: auto;
+    background: var(--bg-primary);
+    display: flex;
+    flex-direction: column; */
 }
 
 .message {
@@ -1183,6 +1195,28 @@ body {
 
 .message-content {
     line-height: 1.4;
+}
+
+.message-status {
+    text-align: right;
+    margin-top: 0.25rem;
+}
+
+.message-tick {
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.sent-tick {
+    color: #1e293b; /* dark blue-gray */
+}
+
+.delivered-tick {
+    color: #1e293b; /* light pink-white */
+}
+
+.seen-tick {
+    color: #fcf9f8; /* light pink-white */
 }
 
 /* Message Input */
@@ -1565,7 +1599,7 @@ body {
     border-radius: var(--radius);
     box-shadow: var(--shadow-lg);
     padding: 1rem;
-    transform: translateY(100%);
+    transform: translateY(125%);
     transition: transform 0.3s ease;
     z-index: 1000;
     min-width: 280px;

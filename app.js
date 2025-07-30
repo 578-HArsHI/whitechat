@@ -822,14 +822,16 @@ class WebSocketChat {
      * Handle active session response
      */
     handleOnlineOfflineResponse(responseData) {
-        console.log('handleOnlineOfflineResponse');
+        // console.log('handleOnlineOfflineResponse');
         if (responseData.online_users && responseData.online_users.length > 0) {
-            const chatIndex = responseData.online_users.findIndex(chat => chat.RoomId == this.currentRoomId);
+            const session = responseData.online_users.find(chat => chat.RoomId == this.currentRoomId);
             
             this.updateChatFromActiveSession(responseData.online_users);
 
-            if (session.RoomId == this.currentRoomId) {
-                this.loadMessages();
+            if (session && session.RoomId == this.currentRoomId) {
+                this.chatStatus.textContent = session.Status;
+                this.chatStatusDot.className = `chat-status-dot ${session.Status.includes('Online') ? 'online' : ''}`;
+                // console.log('this.chatStatus.textContent', session.Status);
             }
         }
     }
@@ -838,7 +840,7 @@ class WebSocketChat {
      * Update chat from active session response
      */
     updateChatFromActiveSession(activeOnline) {
-        console.log('updateChatFromActiveSession', activeOnline);
+        // console.log('updateChatFromActiveSession', activeOnline);
 
         activeOnline.forEach(user => {
             const chatIndex = this.chats.findIndex(chat => chat.RoomId == user.RoomId);
@@ -900,11 +902,11 @@ class WebSocketChat {
         console.log('Updating user info with profile:', this.userProfile);
         
         // Display name and contact info separately
-        const displayName = this.userProfile?.name || this.username;
-        const contactInfo = this.userProfile?.email || this.userProfile?.mobile || this.username;
+        const displayName = this.userProfile[0].name || this.username;
+        // const contactInfo = this.userProfile?.email || this.userProfile?.mobile || this.username;
         
         this.currentUserName.textContent = displayName;
-        this.currentUserContact.textContent = contactInfo;
+        // this.currentUserContact.textContent = contactInfo;
         this.welcomeUsername.textContent = displayName;
     }
 
@@ -1151,8 +1153,9 @@ class WebSocketChat {
         // Apply search
         if (this.searchQuery) {
             filtered = filtered.filter(chat => 
-                chat.Name.toLowerCase().includes(this.searchQuery) ||
-                chat.MsgStr.toLowerCase().includes(this.searchQuery)
+                chat.Name.toLowerCase().includes(this.searchQuery) 
+                // ||
+                // chat.MsgStr.toLowerCase().includes(this.searchQuery)
             );
         }
         
@@ -1199,7 +1202,7 @@ class WebSocketChat {
                         <div class="chat-item-time">${chat.Status}</div>
                     </div>
                     <div class="chat-item-preview">
-                        <span>${chat.MsgStr}</span>
+                        <span>${this.escapeHtml(this.base64ToString(chat.MsgStr))}</span>
                         ${unreadBadge}
                     </div>
                 </div>
@@ -1246,15 +1249,17 @@ class WebSocketChat {
         
         // Update chat header
         this.chatTitle.textContent = chatName;
-        this.chatStatus.textContent = isOnline ? 'Online' : 'Offline';
+        // this.chatStatus.textContent = isOnline ? 'Online' : 'Offline';
         this.chatAvatar.textContent = chatName.charAt(0).toUpperCase();
-        this.chatStatusDot.className = `chat-status-dot ${isOnline ? 'online' : ''}`;
+        // this.chatStatusDot.className = `chat-status-dot ${isOnline ? 'online' : ''}`;
         
         // Load messages for this chat
         this.loadMessages();
         
         // Hide welcome screen and show messages
         this.messagesContainer.innerHTML = '<div class="messages-list" id="messagesList"></div>';
+
+        document.querySelector('.message-input-container').style.display = 'block';
     }
 
     /**
@@ -1280,8 +1285,23 @@ class WebSocketChat {
     createMessageElement(message) {
         const messageEl = document.createElement('div');
         const isOwnMessage = message.User == this.username;
-        
+
+        this.chatStatus.textContent = message.Status;
+        this.chatStatusDot.className = `chat-status-dot ${message.Status.includes('Online') ? 'online' : ''}`;
+
         messageEl.className = `message ${isOwnMessage ? 'sent' : 'received'}`;
+        messageEl.dataset.msgId = message.MsgId;
+
+        let tickHtml = '';
+        let messageStatusHtml = '';
+
+        if (isOwnMessage) {
+            tickHtml = message.Read_At
+                ? `<span class="message-tick seen-tick">✔✔</span>`
+                : `<span class="message-tick sent-tick">✔</span>`;
+
+            messageStatusHtml = `<div class="message-status">${tickHtml}</div>`;
+        }
         
         const time = new Date(message.Sent_At).toLocaleTimeString([], {
             hour: '2-digit',
@@ -1320,14 +1340,19 @@ class WebSocketChat {
             `;
         }
         
+        const readTick = message.Read_At
+            ? `<span class="message-tick double-tick">✔✔</span>`
+            : `<span class="message-tick single-tick">✔</span>`;
+
         messageEl.innerHTML = `
             <div class="message-bubble">
                 <div class="message-header">
                     <span class="message-username">${message.Name || message.User}</span>
                     <span class="message-time">${time}</span>
                 </div>
-                ${message.MsgTxt ? `<div class="message-content">${this.escapeHtml(message.MsgTxt)}</div>` : ''}
+                ${message.MsgTxt ? `<div class="message-content">${this.escapeHtml(this.base64ToString(message.MsgTxt))}</div>` : ''}
                 ${filesHtml}
+                ${messageStatusHtml}
             </div>
         `;
         // ✅ Add download click listeners ONLY IF there are messageFiles
@@ -1350,7 +1375,7 @@ class WebSocketChat {
      * Send message
      */
     sendMessage() {
-        const messageText = this.messageInput.value.trim();
+        const messageText = this.stringToBase64(this.messageInput.value.trim());
         
         if ((!messageText && this.selectedFiles.length === 0) || !this.currentRoomId) return;
         
@@ -1456,10 +1481,14 @@ class WebSocketChat {
      * Reset welcome screen
      */
     resetWelcomeScreen() {
+        document.querySelector('.message-input-container').style.display = 'none';
+        this.chatStatusDot.className = `chat-status-dot`;
+        this.chatTitle.textContent = `Select a chat`;
+        this.chatStatus.textContent = `Choose a conversation to start messaging`;
         this.messagesContainer.innerHTML = `
-            <div class="welcome-screen" id="welcomeScreen">
+            <div class="welcome-container" id="welcomeContainer"><div class="welcome-screen" id="welcomeScreen">
                 <div class="welcome-icon">💬</div>
-                <h3>Welcome to Nimble Chat</h3>
+                <h3>Welcome to OMS Chat</h3>
                 <p>Hi <span id="welcomeUsername"></span>! Select a conversation to start chatting</p>
                 <div class="connection-info">
                     <div class="connection-indicator">
@@ -1471,15 +1500,15 @@ class WebSocketChat {
                         <span id="totalChatsCount">0 conversations</span>
                     </div>
                 </div>
-            </div>
-            
+            </div></div>
+
             <!-- Post-login welcome page -->
             <div class="post-login-welcome" id="postLoginWelcome" style="display: none;">
                 <div class="welcome-animation">
                     <div class="welcome-logo">💬</div>
                     <div class="welcome-pulse"></div>
                 </div>
-                <h2>Welcome to Nimble Chat!</h2>
+                <h2>Welcome to OMS Chat!</h2>
                 <p>Hi <span id="postLoginUsername"></span>! You're now connected and ready to chat.</p>
                 <div class="welcome-stats">
                     <div class="stat-item">
@@ -1956,6 +1985,17 @@ class WebSocketChat {
         document.body.appendChild(form);
         form.submit();
         document.body.removeChild(form);
+    }
+
+    stringToBase64(str) {
+        return btoa(new TextEncoder().encode(str)
+            .reduce((data, byte) => data + String.fromCharCode(byte), ''));
+    }
+
+    base64ToString(base64) {
+        const binary = atob(base64);
+        const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
+        return new TextDecoder().decode(bytes);
     }
 }
 
