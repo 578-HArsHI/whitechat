@@ -227,7 +227,7 @@ class WebSocketChat {
      * Hide login modal
      */
     hideLoginModal() {
-        console.log('Hiding login modal');
+        // console.log('Hiding login modal');
         this.loginModal.style.display = 'none';
         this.chatContainer.style.display = 'flex';
         
@@ -473,7 +473,7 @@ class WebSocketChat {
      * Handle login response
      */
     handleLoginResponse(phpOutput) {
-        console.log('Handling login response:', phpOutput);
+        // console.log('Handling login response:', phpOutput);
         
         // Check for successful login in multiple possible response formats
         const loginSuccess = (phpOutput.login && phpOutput.login.status == 'success') ||
@@ -483,10 +483,10 @@ class WebSocketChat {
             // Get user profile from response
             if (phpOutput.get_user_profile && phpOutput.get_user_profile.status == 'success') {
                 this.userProfile = phpOutput.get_user_profile.user_profile;
-                console.log('User profile loaded:', this.userProfile);
+                // console.log('User profile loaded:', this.userProfile);
             }
             
-            console.log('Login successful, hiding modal and enabling chat');
+            // console.log('Login successful, hiding modal and enabling chat');
             this.hideLoginModal();
             this.updateUserInfo();
             this.enableChat();
@@ -521,11 +521,11 @@ class WebSocketChat {
      * Handle chats response
      */
     handleChatsResponse(chatsData) {
-        console.log('Handling chats response:', chatsData);
+        // console.log('Handling chats response:', chatsData);
         
         if (chatsData.status == 'success') {
             this.chats = chatsData.chats || [];
-            console.log('Loaded chats:', this.chats.length);
+            // console.log('Loaded chats:', this.chats.length);
             this.updateChatCounts();
             this.applyFiltersAndSearch();
         } else {
@@ -537,7 +537,7 @@ class WebSocketChat {
     handleMessagesResponse(responseData) {
         const messagesData = responseData.get_messages;
         const filesData = responseData.get_message_files;
-        console.log('Handling messages response:', messagesData);
+        // console.log('Handling messages response:', messagesData);
 
         if (messagesData && messagesData.status == 'success') {
             this.messages = messagesData.messages || [];
@@ -564,7 +564,7 @@ class WebSocketChat {
      * Handle send message response
      */
     handleSendMessageResponse(sendData) {
-        console.log('Handling send message response:', sendData);
+        // console.log('Handling send message response:', sendData);
         
         if (sendData.status == 'success') {
             // Handle file uploads if files were sent
@@ -856,12 +856,12 @@ class WebSocketChat {
      */
     updateChatFromReceiverSession(session) {
         const chatIndex = this.chats.findIndex(chat => chat.RoomId == session.RoomId);
-        console.log('Updating user chat with ReceiverSession:', chatIndex);
+        // console.log('Updating user chat with ReceiverSession:', chatIndex);
         if (chatIndex != -1) {
             // Update existing chat
             this.chats[chatIndex].MsgStr = session.MsgStr;
             this.chats[chatIndex].Status = session.Status;
-            console.log('Updating user chat with ReceiverSession:', session);
+            // console.log('Updating user chat with ReceiverSession:', session);
             // Only increment unread if it's not the current active chat
             if (session.RoomId != this.currentRoomId) {
                 this.chats[chatIndex].Unread = (this.chats[chatIndex].Unread || 0) + 1;
@@ -884,7 +884,7 @@ class WebSocketChat {
         
         if (chatIndex != -1 && messages.length > 0) {
             const latestMessage = messages[messages.length - 1];
-            console.log('Updating user chat with msg:', latestMessage);
+            // console.log('Updating user chat with msg:', latestMessage);
             // Update chat with latest message and reset unread count
             this.chats[chatIndex].MsgStr = latestMessage.MsgStr;
             this.chats[chatIndex].Status = latestMessage.Status;
@@ -899,7 +899,7 @@ class WebSocketChat {
      * Update user info in UI
      */
     updateUserInfo() {
-        console.log('Updating user info with profile:', this.userProfile);
+        // console.log('Updating user info with profile:', this.userProfile);
         
         // Display name and contact info separately
         const displayName = this.userProfile[0].name || this.username;
@@ -1296,9 +1296,13 @@ class WebSocketChat {
         let messageStatusHtml = '';
 
         if (isOwnMessage) {
-            tickHtml = message.Read_At
-                ? `<span class="message-tick seen-tick">✔✔</span>`
-                : `<span class="message-tick sent-tick">✔</span>`;
+            if (message.MsgState === 1) {
+                tickHtml = `<span class="message-tick sent-tick">✔</span>`;
+            } else if (message.MsgState === 2) {
+                tickHtml = `<span class="message-tick delivered-tick">✔✔</span>`;
+            } else if (message.MsgState === 3) {
+                tickHtml = `<span class="message-tick seen-tick">✔✔</span>`;
+            }
 
             messageStatusHtml = `<div class="message-status">${tickHtml}</div>`;
         }
@@ -1552,7 +1556,7 @@ class WebSocketChat {
     sendJSON(data) {
         if (this.ws && this.ws.readyState == WebSocket.OPEN) {
             this.ws.send(JSON.stringify(data));
-            // console.log('Sent:', data);
+            console.log('Sent:', data);
         } else {
             console.error('WebSocket not connected, readyState:', this.ws ? this.ws.readyState : 'null');
             this.showToast('Connection lost. Reconnecting...', 'warning');
