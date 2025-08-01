@@ -467,6 +467,11 @@ class WebSocketChat {
         if (phpOutput.get_active_sessions && phpOutput.get_active_sessions.active_sessions && phpOutput.get_active_sessions.online_users) {
             this.handleOnlineOfflineResponse(phpOutput.get_active_sessions);
         }
+
+        // Handle sender session response
+        if (phpOutput.get_sender_sessions && phpOutput.get_sender_sessions.sender_sessions && phpOutput.get_sender_sessions.sender_messages) {
+            this.handleDeliveryMessage(phpOutput.get_sender_sessions);
+        }
     }
 
     /**
@@ -834,6 +839,48 @@ class WebSocketChat {
                 // console.log('this.chatStatus.textContent', session.Status);
             }
         }
+    }
+
+    /**
+     * Handle sender session response
+     */
+    handleDeliveryMessage(senderData) {
+        // console.log('handleOnlineOfflineResponse');
+        if (senderData.sender_messages && senderData.sender_messages.length > 0) {
+            const session = senderData.sender_messages.find(chat => chat.RoomId == this.currentRoomId);
+            
+            if (session && session.RoomId == this.currentRoomId) {
+                this.updateChatFromSenderSession(senderData.sender_messages);
+                // console.log('this.chatStatus.textContent', session.Status);
+            }
+        }
+    }
+
+    /**
+     * Update chat from sender session response
+     */
+    updateChatFromSenderSession(sessionmessage) {
+        sessionmessage.forEach(user => {
+            const selectedMsg = document.querySelector(`[data-msg-id="${user.MsgId}"]`);
+            if (selectedMsg) {
+                // Select the tick container inside the message
+                const tickContainer = selectedMsg.querySelector('.message-status');
+                if (tickContainer) {
+                    let tickHtml = '';
+
+                    if (user.MsgState === 1) {
+                        tickHtml = `<span class="message-tick sent-tick">✔</span>`;
+                    } else if (user.MsgState === 2) {
+                        tickHtml = `<span class="message-tick delivered-tick">✔✔</span>`;
+                    } else if (user.MsgState === 3) {
+                        tickHtml = `<span class="message-tick seen-tick">✔✔</span>`;
+                    }
+
+                    tickContainer.innerHTML = tickHtml;
+                }
+            }
+            // console.log('activeOnline', this.chats[chatIndex]);
+        });
     }
 
     /**
