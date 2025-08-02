@@ -236,6 +236,9 @@ body {
 }
 
 .user-info {
+    display: flex;
+    /* align-items: center; */
+    gap: 1rem;
     padding: 1rem 1.25rem;
     border-bottom: 1px solid var(--border-color);
     font-size: 0.85rem;
@@ -243,8 +246,9 @@ body {
 
 .user-details {
     display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    flex-direction: column;  
+    /* align-items: center; */
+    gap: 0.1rem;
     margin-bottom: 0.5rem;
 }
 
@@ -256,6 +260,7 @@ body {
 .user-name {
     color: var(--text-primary);
     font-weight: 600;
+    font-size: 1.1rem;
 }
 
 .connection-status {
@@ -1220,6 +1225,23 @@ body {
 }
 
 /* Message Input */
+.messageInput {
+    resize: none;
+    overflow-y: auto;
+    line-height: 1.5em;
+    max-height: calc(1.5em * 5); /* 5 lines max */
+    min-height: 1.5em;
+    padding: 8px;
+    width: 100%;
+    font-size: 14px;
+    border: none;
+    outline: none;
+    box-sizing: border-box;
+    border-radius: 8px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
 .message-input-container {
     padding: 1rem 1.5rem;
     background: var(--bg-primary);

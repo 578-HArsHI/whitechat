@@ -83,15 +83,19 @@
                 </div>
                 
                 <div class="user-info">
+                    <div class="chat-item-avatar">
+                        <span id="userAvatar"></span>
+                        <div class="chat-status-dot" id="userStatusDot"></div>
+                    </div>
                     <div class="user-details">
                         <div class="user-name" id="currentUserName"></div>
                         <div class="user-contact" id="currentUserContact"></div>
-                    </div>
-                    <div class="connection-status" id="connectionStatus">
-                        <span class="status-label">Status:</span>
-                        <div class="status-indicator">
-                            <span class="status-dot"></span>
-                            <span class="status-text">Connecting...</span>
+                        <div class="connection-status" id="connectionStatus">
+                            <span class="status-label">Status:</span>
+                            <div class="status-indicator">
+                                <span class="status-dot"></span>
+                                <span class="status-text">Connecting...</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -201,7 +205,8 @@
                                 <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66L9.64 16.2a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
                             </svg>
                         </button>
-                        <input type="text" id="messageInput" placeholder="Type a message..." disabled>
+                        <!-- <input type="text" id="messageInput" placeholder="Type a message..." disabled> -->
+                        <textarea id="messageInput" class="messageInput" placeholder="Type a message..." rows="1"></textarea>
                         <button id="sendBtn" class="send-btn" disabled>
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M22 2L11 13"/>

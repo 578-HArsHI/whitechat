@@ -54,10 +54,12 @@ class WebSocketChat {
         this.loginBtn = document.getElementById('loginBtn');
         this.loginError = document.getElementById('loginError');
         
-        // Chat elements
+        // Chat elements 
         this.chatContainer = document.querySelector('.chat-container');
         this.connectionStatus = document.getElementById('connectionStatus');
         this.currentUserName = document.getElementById('currentUserName');
+        this.currentUserAvatar = document.getElementById('userAvatar');
+        this.userStatusDot = document.getElementById('userStatusDot');
         this.welcomeUsername = document.getElementById('welcomeUsername');
         this.chatList = document.getElementById('chatList');
         this.chatTitle = document.getElementById('chatTitle');
@@ -954,6 +956,8 @@ class WebSocketChat {
         
         this.currentUserName.textContent = displayName;
         // this.currentUserContact.textContent = contactInfo;
+        this.currentUserAvatar.textContent = displayName.charAt(0).toUpperCase();
+        this.userStatusDot.className = `chat-status-dot ${this.userProfile[0].Status.includes('Online') ? 'online' : ''}`;
         this.welcomeUsername.textContent = displayName;
     }
 
@@ -1067,10 +1071,19 @@ class WebSocketChat {
      * Update send button state
      */
     updateSendButtonState() {
+        console.log('this.messageInput.value.trim().length', this.messageInput.value.trim().length);
         const hasMessage = this.messageInput.value.trim().length > 0;
         const hasFiles = this.selectedFiles.length > 0;
-        
         this.sendBtn.disabled = !(hasMessage || hasFiles) || !this.isConnected;
+        this.messageInput.style.height = 'auto'; // Reset
+        if (hasMessage) {
+            const maxHeight = parseFloat(getComputedStyle(this.messageInput).lineHeight) * 5;
+            this.messageInput.style.height = Math.min(this.messageInput.scrollHeight, maxHeight) + 'px';
+            this.messageInput.style.overflowY = this.messageInput.scrollHeight > maxHeight ? 'auto' : 'hidden';
+        } else {
+            this.messageInput.value = '';
+        }
+        // this.messageInput.style.height = '-1px';
     }
 
     /**
@@ -1390,10 +1403,6 @@ class WebSocketChat {
                 </div>
             `;
         }
-        
-        const readTick = message.Read_At
-            ? `<span class="message-tick double-tick">✔✔</span>`
-            : `<span class="message-tick single-tick">✔</span>`;
 
         messageEl.innerHTML = `
             <div class="message-bubble">
@@ -1519,6 +1528,12 @@ class WebSocketChat {
         this.renderFileList();
         this.hideNotificationPanel()
         this.notificationPanel.querySelector('.notification-panel-content').innerHTML = '';
+
+        this.uploadProgress.clear();     // Clears all upload progress entries
+        this.downloadProgress.clear();   // Clears all download progress entries
+        this.activeUploads.clear();      // Clears all active uploads
+        this.activeDownloads.clear();    // Clears all active downloads
+
         // Reset filter tabs
         this.filterTabs.forEach(tab => {
             tab.classList.toggle('active', tab.dataset.filter == 'all');
