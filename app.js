@@ -89,8 +89,13 @@ class WebSocketChat {
         
         // Settings dropdown
         this.settingsDropdown = document.getElementById('settingsDropdown');
+
         this.newGroupBtn = document.getElementById('newGroupBtn');
+
         this.activeSessionsBtn = document.getElementById('activeSessionsBtn');
+        this.activeSessionsModal = document.getElementById('activeSessionsModal');
+        this.closeSessionsModal = document.getElementById('closeSessionsModal');
+
         this.logoutBtn = document.getElementById('logoutBtn');
         
         // Dark mode toggle
@@ -145,6 +150,9 @@ class WebSocketChat {
         // Settings dropdown actions
         this.newGroupBtn.addEventListener('click', () => this.handleNewGroup());
         this.activeSessionsBtn.addEventListener('click', () => this.handleActiveSessions());
+
+        this.closeSessionsModal.addEventListener('click', () => { this.hideActiveSessionsModal(); });
+
         this.logoutBtn.addEventListener('click', () => this.handleLogout());
         
         // Dark mode toggle
@@ -153,6 +161,13 @@ class WebSocketChat {
         // Notification events
         this.notificationIcon.addEventListener('click', () => this.showNotificationPanel());
         this.notificationClose.addEventListener('click', () => this.hideNotificationPanel());
+
+        // Close modal when clicking outside
+        this.activeSessionsModal.addEventListener('click', (e) => {
+            if (e.target.id === 'activeSessionsModal') {
+                this.hideActiveSessionsModal();
+            }
+        });
 
         // Close settings dropdown when clicking outside
         document.addEventListener('click', (e) => {
@@ -165,6 +180,248 @@ class WebSocketChat {
         window.addEventListener('beforeunload', () => {
             this.disconnect();
         });
+    }
+
+    showActiveSessionsModal() {
+        activeSessionsModal.style.display = 'flex';
+        this.loadActiveSessions();
+    }
+
+    hideActiveSessionsModal() {
+        activeSessionsModal.style.display = 'none';
+    }
+
+    loadActiveSessions() {
+        const sessionsContent = document.getElementById('sessionsContent');
+        // Show loading spinner
+        sessionsContent.innerHTML = `
+            <div class="loading-spinner">
+                <div class="spinner"></div>
+                <p>Loading sessions...</p>
+            </div>
+        `;
+        this.renderSessions(data.my_sessions || []);
+    }
+    
+        renderSessions(sessions) {
+        const sessionsContent = document.getElementById('sessionsContent');
+        
+        // Categorize sessions
+        const currentSession = sessions.filter(s => s.SessType === 'Current Session');
+        const activeSessions = sessions.filter(s => s.SessType === 'Other active session');
+        const olderSessions = sessions.filter(s => s.SessType === 'Older session');
+
+        let html = '';
+
+        // Current Session
+        if (currentSession.length > 0) {
+            html += this.renderSessionCategory('Current Session', currentSession, '🟢', false);
+        }
+
+        // Other Active Sessions
+        if (activeSessions.length > 0) {
+            html += this.renderSessionCategory('Other Active Sessions', activeSessions, '🟡', true);
+        }
+
+        // Older Sessions
+        if (olderSessions.length > 0) {
+            html += this.renderSessionCategory('Older Sessions', olderSessions, '⚫', false);
+        }
+
+        if (html === '') {
+            html = `
+                <div class="empty-category">
+                    <div class="empty-category-icon">📱</div>
+                    <p>No sessions found</p>
+                </div>
+            `;
+        }
+
+        sessionsContent.innerHTML = html;
+
+        // Add event listeners for terminate buttons
+        this.addTerminateEventListeners();
+    }
+
+    renderSessionCategory(title, sessions, icon, showTerminateAll) {
+        const count = sessions.length;
+        
+        let html = `
+            <div class="session-category">
+                <div class="category-header">
+                    <div class="category-title">
+                        <span class="category-icon">${icon}</span>
+                        <span class="category-name">${title}</span>
+                        <span class="category-count">${count}</span>
+                    </div>
+        `;
+
+        if (showTerminateAll && count > 0) {
+            html += `
+                    <button class="terminate-all-btn" onclick="chatApp.terminateAllActiveSessions()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 6L6 18M6 6l12 12"/>
+                        </svg>
+                        Terminate All (${count})
+                    </button>
+            `;
+        }
+
+        html += `
+                </div>
+                <div class="session-list">
+        `;
+
+        if (sessions.length === 0) {
+            html += `
+                <div class="empty-category">
+                    <p>No ${title.toLowerCase()} found</p>
+                </div>
+            `;
+        } else {
+            sessions.forEach(session => {
+                html += this.renderSessionItem(session);
+            });
+        }
+
+        html += `
+                </div>
+            </div>
+        `;
+
+        return html;
+    }
+
+    renderSessionItem(session) {
+        const isCurrent = session.SessType === 'Current Session';
+        const isActive = session.SessType === 'Other active session';
+        const isOnline = session.Status === 'Online';
+        
+        let iconClass = 'offline';
+        let sessionIcon = '📱';
+        
+        if (isCurrent) {
+            iconClass = 'current';
+            sessionIcon = '✅';
+        } else if (isActive) {
+            iconClass = 'active';
+            sessionIcon = '🔄';
+        }
+
+        const showTerminateBtn = !isCurrent && isOnline;
+
+        return `
+            <div class="session-item">
+                <div class="session-icon ${iconClass}">
+                    ${sessionIcon}
+                </div>
+                <div class="session-details">
+                    <div class="session-type">${session.SessType}</div>
+                    <div class="session-info">
+                        <div class="session-ip">IP: ${session.DeviceIP}</div>
+                        <div class="session-time">Connected: ${session.Conn_At}</div>
+                        ${session.Discn_At ? `<div class="session-time">Disconnected: ${session.Discn_At}</div>` : ''}
+                    </div>
+                    <div class="session-status">
+                        <div class="status-dot-small ${isOnline ? 'online' : 'offline'}"></div>
+                        <span class="status-text-small">${session.Status}</span>
+                    </div>
+                </div>
+                <div class="session-actions">
+                    ${showTerminateBtn ? `
+                        <button class="terminate-btn" onclick="chatApp.terminateSession('${session.ConnId}')" title="Terminate Session">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 6L6 18M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }
+
+    addTerminateEventListeners() {
+        // Event listeners are added inline in the HTML for simplicity
+        // You could also add them here if you prefer
+    }
+
+    async terminateSession(connId) {
+        if (!confirm('Are you sure you want to terminate this session?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch('your-api-endpoint.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'terminate_session',
+                    username: this.username,
+                    sessionid: this.sessionId,
+                    conn_id: connId,
+                    batchId: this.generateBatchId(),
+                    requestId: this.generateBatchId()
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                this.showToast('Session terminated successfully', 'success');
+                this.loadActiveSessions(); // Reload sessions
+            } else {
+                this.showToast(data.message || 'Failed to terminate session', 'error');
+            }
+        } catch (error) {
+            console.error('Error terminating session:', error);
+            this.showToast('Network error occurred', 'error');
+        }
+    }
+
+    async terminateAllActiveSessions() {
+        if (!confirm('Are you sure you want to terminate all other active sessions?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch('your-api-endpoint.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'terminate_all_active_sessions',
+                    username: this.username,
+                    sessionid: this.sessionId,
+                    batchId: this.generateBatchId(),
+                    requestId: this.generateBatchId()
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                this.showToast('All active sessions terminated successfully', 'success');
+                this.loadActiveSessions(); // Reload sessions
+            } else {
+                this.showToast(data.message || 'Failed to terminate sessions', 'error');
+            }
+        } catch (error) {
+            console.error('Error terminating sessions:', error);
+            this.showToast('Network error occurred', 'error');
+        }
+    }
+
+    showSessionsError(message) {
+        const sessionsContent = document.getElementById('sessionsContent');
+        sessionsContent.innerHTML = `
+            <div class="empty-category">
+                <div class="empty-category-icon">❌</div>
+                <p>${message}</p>
+            </div>
+        `;
     }
 
     /**
@@ -1485,7 +1742,8 @@ class WebSocketChat {
      */
     handleActiveSessions() {
         this.settingsDropdown.classList.remove('show');
-        this.showToast('Active sessions feature coming soon!', 'info');
+        // this.showToast('Active sessions feature coming soon!', 'info');
+        this.showActiveSessionsModal();
     }
 
     /**
