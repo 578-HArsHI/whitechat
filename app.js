@@ -182,16 +182,28 @@ class WebSocketChat {
         });
     }
 
+    sendActiveSessions() {
+        const loginData = {
+            action: 'get_my_sessions',
+            username: this.username,
+            sessionid: this.sessionId,
+            deviceip: '127.0.0.1',
+            batchId: this.generateBatchId(),
+            requestId: this.generateBatchId()
+        };
+
+        this.sendJSON(loginData);
+    }
+
     showActiveSessionsModal() {
         activeSessionsModal.style.display = 'flex';
-        this.loadActiveSessions();
     }
 
     hideActiveSessionsModal() {
         activeSessionsModal.style.display = 'none';
     }
 
-    loadActiveSessions() {
+    loadActiveSessions(sessionsHistory) {
         const sessionsContent = document.getElementById('sessionsContent');
         // Show loading spinner
         sessionsContent.innerHTML = `
@@ -200,16 +212,16 @@ class WebSocketChat {
                 <p>Loading sessions...</p>
             </div>
         `;
-        this.renderSessions(data.my_sessions || []);
+        this.renderSessions(sessionsHistory.my_sessions || []);
     }
     
-        renderSessions(sessions) {
+    renderSessions(sessions) {
         const sessionsContent = document.getElementById('sessionsContent');
         
         // Categorize sessions
-        const currentSession = sessions.filter(s => s.SessType === 'Current Session');
-        const activeSessions = sessions.filter(s => s.SessType === 'Other active session');
-        const olderSessions = sessions.filter(s => s.SessType === 'Older session');
+        const currentSession = sessions.filter(s => s.SessnId === this.sessionId);
+        const activeSessions = sessions.filter(s => s.SessType === 1 && s.SessnId !== this.sessionId);
+        const olderSessions = sessions.filter(s => s.SessType === 0);
 
         let html = '';
 
@@ -240,7 +252,7 @@ class WebSocketChat {
         sessionsContent.innerHTML = html;
 
         // Add event listeners for terminate buttons
-        this.addTerminateEventListeners();
+        this.addTerminateEventListeners(activeSessions);
     }
 
     renderSessionCategory(title, sessions, icon, showTerminateAll) {
@@ -258,7 +270,7 @@ class WebSocketChat {
 
         if (showTerminateAll && count > 0) {
             html += `
-                    <button class="terminate-all-btn" onclick="chatApp.terminateAllActiveSessions()">
+                    <button class="terminate-all-btn" id="terminateAllBtn">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M18 6L6 18M6 6l12 12"/>
                         </svg>
@@ -293,8 +305,8 @@ class WebSocketChat {
     }
 
     renderSessionItem(session) {
-        const isCurrent = session.SessType === 'Current Session';
-        const isActive = session.SessType === 'Other active session';
+        const isCurrent = session.SessnId === this.sessionId;
+        const isActive = session.SessType === 1;
         const isOnline = session.Status === 'Online';
         
         let iconClass = 'offline';
@@ -311,12 +323,12 @@ class WebSocketChat {
         const showTerminateBtn = !isCurrent && isOnline;
 
         return `
-            <div class="session-item">
+            <div class="session-item" data-conn-id="${session.ConnId}">
                 <div class="session-icon ${iconClass}">
                     ${sessionIcon}
                 </div>
                 <div class="session-details">
-                    <div class="session-type">${session.SessType}</div>
+                    <div class="session-type">${session.ConnId} : ${session.SessnId}</div>
                     <div class="session-info">
                         <div class="session-ip">IP: ${session.DeviceIP}</div>
                         <div class="session-time">Connected: ${session.Conn_At}</div>
@@ -329,7 +341,7 @@ class WebSocketChat {
                 </div>
                 <div class="session-actions">
                     ${showTerminateBtn ? `
-                        <button class="terminate-btn" onclick="chatApp.terminateSession('${session.ConnId}')" title="Terminate Session">
+                        <button class="terminate-btn" id="terminateBtn${session.ConnId}" title="Terminate Session">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M18 6L6 18M6 6l12 12"/>
                             </svg>
@@ -340,78 +352,35 @@ class WebSocketChat {
         `;
     }
 
-    addTerminateEventListeners() {
-        // Event listeners are added inline in the HTML for simplicity
-        // You could also add them here if you prefer
+    addTerminateEventListeners(activeSessions) {
+        const terminateAllBtn = document.getElementById('terminateAllBtn');
+        if (terminateAllBtn) {
+            terminateAllBtn.addEventListener('click', () => {
+                console.log('Terminate All clicked!');
+                this.terminateAllActiveSessions(activeSessions);
+            });
+        }
+
+        activeSessions.forEach(session => {
+            const btnId = `terminateBtn${session.ConnId}`;
+            const terminateBtn = document.getElementById(btnId);
+            if (terminateBtn) {
+                terminateBtn.addEventListener('click', () => {
+                    console.log('Terminate ', session.ConnId, ' clicked!'); 
+                    this.terminateSession(session.ConnId);
+                });
+            } else {
+                console.warn(`Terminate button not found for ConnId: ${session.ConnId}`);
+            }
+        });
+    }    
+
+    terminateSession(connId) {
+        console.log('Feature coming soon!', connId);
     }
 
-    async terminateSession(connId) {
-        if (!confirm('Are you sure you want to terminate this session?')) {
-            return;
-        }
-
-        try {
-            const response = await fetch('your-api-endpoint.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    action: 'terminate_session',
-                    username: this.username,
-                    sessionid: this.sessionId,
-                    conn_id: connId,
-                    batchId: this.generateBatchId(),
-                    requestId: this.generateBatchId()
-                })
-            });
-
-            const data = await response.json();
-
-            if (data.status === 'success') {
-                this.showToast('Session terminated successfully', 'success');
-                this.loadActiveSessions(); // Reload sessions
-            } else {
-                this.showToast(data.message || 'Failed to terminate session', 'error');
-            }
-        } catch (error) {
-            console.error('Error terminating session:', error);
-            this.showToast('Network error occurred', 'error');
-        }
-    }
-
-    async terminateAllActiveSessions() {
-        if (!confirm('Are you sure you want to terminate all other active sessions?')) {
-            return;
-        }
-
-        try {
-            const response = await fetch('your-api-endpoint.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    action: 'terminate_all_active_sessions',
-                    username: this.username,
-                    sessionid: this.sessionId,
-                    batchId: this.generateBatchId(),
-                    requestId: this.generateBatchId()
-                })
-            });
-
-            const data = await response.json();
-
-            if (data.status === 'success') {
-                this.showToast('All active sessions terminated successfully', 'success');
-                this.loadActiveSessions(); // Reload sessions
-            } else {
-                this.showToast(data.message || 'Failed to terminate sessions', 'error');
-            }
-        } catch (error) {
-            console.error('Error terminating sessions:', error);
-            this.showToast('Network error occurred', 'error');
-        }
+    terminateAllActiveSessions(activeSessions) {
+        console.log('Feature coming soon!', activeSessions);
     }
 
     showSessionsError(message) {
@@ -463,9 +432,14 @@ class WebSocketChat {
      * Show notification panel
      */
     showNotificationPanel() {
-        this.notificationPanel.classList.add('show');
+        // this.notificationPanel.classList.add('show');
+        this.toggleNotificationPanel();
     }
 
+    toggleNotificationPanel() {
+        this.notificationPanel.classList.toggle('show');
+    }
+    
     /**
      * Hide notification panel
      */
@@ -731,6 +705,13 @@ class WebSocketChat {
         if (phpOutput.get_sender_sessions && phpOutput.get_sender_sessions.sender_sessions && phpOutput.get_sender_sessions.sender_messages) {
             this.handleDeliveryMessage(phpOutput.get_sender_sessions);
         }
+
+        // Handle my session response
+        if (phpOutput.get_my_sessions && phpOutput.get_my_sessions.my_sessions) {
+            this.loadActiveSessions(phpOutput.get_my_sessions);
+        } else if (phpOutput.get_active_sessions && phpOutput.get_active_sessions.my_sessions) {
+            this.loadActiveSessions(phpOutput.get_active_sessions);
+        }        
     }
 
     /**
@@ -1744,6 +1725,7 @@ class WebSocketChat {
         this.settingsDropdown.classList.remove('show');
         // this.showToast('Active sessions feature coming soon!', 'info');
         this.showActiveSessionsModal();
+        this.sendActiveSessions();
     }
 
     /**

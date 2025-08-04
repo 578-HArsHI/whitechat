@@ -77,7 +77,7 @@ body {
 
 .modal-content {
     background: var(--bg-primary);
-    padding: 2.5rem;
+    padding: 1.5rem;
     border-radius: var(--radius-lg);
     width: 420px;
     max-width: 90vw;
@@ -1660,7 +1660,7 @@ body {
 
 /* Active Sessions Modal */
 .sessions-modal {
-    width: 600px;
+    width: 1000px;
     max-width: 95vw;
     max-height: 80vh;
     display: flex;
