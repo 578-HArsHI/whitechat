@@ -137,6 +137,9 @@ class WebSocketChat {
 
         // Search and filter events
         this.searchInput.addEventListener('input', (e) => this.handleSearch(e.target.value));
+        this.searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') this.clearSearch();
+        });
         this.clearSearchBtn.addEventListener('click', () => this.clearSearch());
         
         this.filterTabs.forEach(tab => {
@@ -357,7 +360,7 @@ class WebSocketChat {
         if (terminateAllBtn) {
             terminateAllBtn.addEventListener('click', () => {
                 console.log('Terminate All clicked!');
-                this.terminateAllActiveSessions(activeSessions);
+                this.terminateSession(activeSessions.map(s => s.ConnId));
             });
         }
 
@@ -367,7 +370,7 @@ class WebSocketChat {
             if (terminateBtn) {
                 terminateBtn.addEventListener('click', () => {
                     console.log('Terminate ', session.ConnId, ' clicked!'); 
-                    this.terminateSession(session.ConnId);
+                    this.terminateSession([session.ConnId]);
                 });
             } else {
                 console.warn(`Terminate button not found for ConnId: ${session.ConnId}`);
@@ -375,12 +378,18 @@ class WebSocketChat {
         });
     }    
 
-    terminateSession(connId) {
-        console.log('Feature coming soon!', connId);
-    }
+    terminateSession(activeConnId) {
+        const terminateData = {
+            action: 'terminate_session',
+            username: this.username,
+            sessionid: this.sessionId,
+            connId: activeConnId,
+            batchId: this.generateBatchId(),
+            requestId: this.generateBatchId()
+        };
 
-    terminateAllActiveSessions(activeSessions) {
-        console.log('Feature coming soon!', activeSessions);
+        this.sendJSON(terminateData);
+        console.log('Feature coming soon!', activeConnId);
     }
 
     showSessionsError(message) {
@@ -711,7 +720,16 @@ class WebSocketChat {
             this.loadActiveSessions(phpOutput.get_my_sessions);
         } else if (phpOutput.get_active_sessions && phpOutput.get_active_sessions.my_sessions) {
             this.loadActiveSessions(phpOutput.get_active_sessions);
-        }        
+        }
+
+        // Handle terminate session response
+        if (phpOutput.terminate_session && phpOutput.terminate_session.terminate_session) {
+            const termsess = phpOutput.terminate_session.terminate_session;
+            if (termsess[0].SessnId == this.sessionId) {
+                this.handleLogout();
+                console.log('Terminated successfully:', this.userProfile);
+            }
+        }
     }
 
     /**
@@ -1766,7 +1784,8 @@ class WebSocketChat {
         this.clearSearchBtn.style.display = 'none';
         this.selectedFiles = [];
         this.renderFileList();
-        this.hideNotificationPanel()
+        this.hideNotificationPanel();
+        this.hideActiveSessionsModal();
         this.notificationPanel.querySelector('.notification-panel-content').innerHTML = '';
 
         this.uploadProgress.clear();     // Clears all upload progress entries
