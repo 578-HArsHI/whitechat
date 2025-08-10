@@ -730,6 +730,16 @@ class WebSocketChat {
                 console.log('Terminated successfully:', this.userProfile);
             }
         }
+
+        // Handle get users response
+        if (phpOutput.get_users) {
+            this.handleGetUsersResponse(phpOutput.get_users);
+        }
+
+        // Handle create group response
+        if (phpOutput.create_group) {
+            this.handleCreateGroupResponse(phpOutput.create_group);
+        }
     }
 
     /**
@@ -1733,7 +1743,411 @@ class WebSocketChat {
      */
     handleNewGroup() {
         this.settingsDropdown.classList.remove('show');
-        this.showToast('New group feature coming soon!', 'info');
+        // this.showToast('New group feature coming soon!', 'info');
+        this.openNewGroupModal();
+    }
+
+    setupNewGroupModal() {
+        this.newGroupBtn = document.getElementById('newGroupBtn');
+        this.newGroupModal = document.getElementById('newGroupModal');
+        this.closeNewGroupModal = document.getElementById('closeNewGroupModal');
+        this.cancelGroupBtn = document.getElementById('cancelGroupBtn');
+        this.createGroupBtn = document.getElementById('createGroupBtn');
+        this.groupNameInput = document.getElementById('groupNameInput');
+        this.groupNameError = document.getElementById('groupNameError');
+        this.availableUsersList = document.getElementById('availableUsersList');
+        this.selectedUsersList = document.getElementById('selectedUsersList');
+
+        this.availableUsersSearch = document.getElementById('availableUsersSearch');
+        this.availableUsersSearch.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                this.availableUsersSearch.value = '';
+                this.clearAvailableSearch.style.display = 'none';
+                this.filterUsers();
+            }
+        });
+        this.selectedUsersSearch = document.getElementById('selectedUsersSearch');
+        this.selectedUsersSearch.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                this.selectedUsersSearch.value = '';
+                this.clearSelectedSearch.style.display = 'none';
+                this.filterUsers();
+            }
+        });
+        this.clearAvailableSearch = document.getElementById('clearAvailableSearch');
+        this.clearSelectedSearch = document.getElementById('clearSelectedSearch');
+        
+        // Transfer control buttons
+        this.moveToSelected = document.getElementById('moveToSelected');
+        this.moveAllToSelected = document.getElementById('moveAllToSelected');
+        this.removeFromSelected = document.getElementById('removeFromSelected');
+        this.removeAllFromSelected = document.getElementById('removeAllFromSelected');
+
+        this.availableUsers = [];
+        this.selectedUsers = [];
+        this.filteredAvailableUsers = [];
+        this.filteredSelectedUsers = [];
+
+        this.closeNewGroupModal?.addEventListener('click', () => this.closeNewGroupModalHandler());
+        this.cancelGroupBtn?.addEventListener('click', () => this.closeNewGroupModalHandler());
+        this.createGroupBtn?.addEventListener('click', () => this.createNewGroupModalHandler());
+
+        // Transfer button functionality
+        this.moveToSelected?.addEventListener('click', () => {
+            const selectedLogins = this.getSelectedItems('available');
+            if (selectedLogins.length > 0) {
+                this.moveUsersToSelected(selectedLogins);
+            }
+        });
+
+        this.moveAllToSelected?.addEventListener('click', () => {
+            const allLogins = this.availableUsers.map(u => u.login);
+            this.moveUsersToSelected(allLogins);
+        });
+        
+        this.removeFromSelected?.addEventListener('click', () => {
+            const selectedLogins = this.getSelectedItems('selected');
+            if (selectedLogins.length > 0) {
+                this.moveUsersToAvailable(selectedLogins);
+            }
+        });
+        
+        this.removeAllFromSelected?.addEventListener('click', () => {
+            const allLogins = this.selectedUsers.map(u => u.login);
+            this.moveUsersToAvailable(allLogins);
+        });
+
+        // Setup drag and drop
+        [availableUsersList, selectedUsersList].forEach(list => {
+            list.addEventListener('dragover', (e) => {
+                e.preventDefault();
+            });
+            
+            list.addEventListener('drop', (e) => {
+                e.preventDefault();
+                const logins = JSON.parse(e.dataTransfer.getData('text/plain'));
+                const source = e.dataTransfer.getData('source');
+
+                if (list === this.selectedUsersList && source === 'available') {
+                    this.moveUsersToSelected(logins);
+                } else if (list === this.availableUsersList && source === 'selected') {
+                    this.moveUsersToAvailable(logins);
+                }
+            });
+        });
+
+        // Search functionality
+        this.availableUsersSearch?.addEventListener('input', (e) => {
+            const value = e.target.value;
+            this.clearAvailableSearch.style.display = value ? 'flex' : 'none';
+            this.filterUsers();
+        });
+        
+        this.selectedUsersSearch?.addEventListener('input', (e) => {
+            const value = e.target.value;
+            this.clearSelectedSearch.style.display = value ? 'flex' : 'none';
+            this.filterUsers();
+        });
+        
+        this.clearAvailableSearch?.addEventListener('click', () => {
+            this.availableUsersSearch.value = '';
+            this.clearAvailableSearch.style.display = 'none';
+            this.filterUsers();
+        });
+        
+        this.clearSelectedSearch?.addEventListener('click', () => {
+            this.selectedUsersSearch.value = '';
+            this.clearSelectedSearch.style.display = 'none';
+            this.filterUsers();
+        });
+
+        // Close modal when clicking outside
+        this.newGroupModal.addEventListener('click', (e) => {
+            if (e.target.id === 'newGroupModal') {
+                this.closeNewGroupModalHandler();
+            }
+        });
+    }
+
+    closeNewGroupModalHandler() {
+        this.newGroupModal.style.display = 'none';
+        this.resetGroupForm();
+    }
+
+    createNewGroupModalHandler() {
+        const groupName = this.groupNameInput.value.trim();
+        const selectedUserLogins = this.selectedUsers.map(u => u.login);
+
+        if (groupName && selectedUserLogins.length > 0) {
+            const requestData = {
+                action: 'create_group',
+                groupname: groupName,
+                users: selectedUserLogins,
+                username: this.username,
+                sessionid: this.sessionId,
+                batchId: this.generateBatchId(),
+                requestId: this.generateBatchId()
+            };
+            this.sendJSON(requestData);
+        }
+        // this.newGroupModal.style.display = 'none';
+        // resetGroupForm();
+    }
+
+    resetGroupForm() {
+        this.groupNameInput.value = '';
+        this.groupNameError.textContent = '';
+        this.availableUsersSearch.value = '';
+        this.selectedUsersSearch.value = '';
+        this.clearAvailableSearch.style.display = 'none';
+        this.clearSelectedSearch.style.display = 'none';
+        this.availableUsers = [];
+        this.selectedUsers = [];
+        this.filteredAvailableUsers = [];
+        this.filteredSelectedUsers = [];
+        this.updateCreateButtonState();
+        // this.renderUserLists();
+    }
+
+    updateCreateButtonState() {
+        const groupName = this.groupNameInput?.value.trim();
+        const hasSelectedUsers = this.selectedUsers.length > 0;
+        const isValid = groupName && groupName.length >= 2 && hasSelectedUsers;
+        
+        if (this.createGroupBtn) {
+            this.createGroupBtn.disabled = !isValid;
+        }
+    }
+
+    openNewGroupModal() {
+        this.setupNewGroupModal();
+        this.newGroupModal.style.display = 'flex';
+        
+        // Reset form
+        this.groupNameInput.value = '';
+        this.groupNameError.textContent = '';
+        this.availableUsersSearch.value = '';
+        this.selectedUsersSearch.value = '';
+        
+        // Reset user selections
+        this.selectedUsers = [];
+        this.availableUsers = [];
+        
+        // Load users
+        this.loadUsersForGroup();
+        
+        // Focus on group name input
+        setTimeout(() => {
+            this.groupNameInput.focus();
+        }, 100);
+    }
+
+    loadUsersForGroup() {
+        this.availableUsersList.innerHTML = `
+            <div class="loading-users">
+                <div class="spinner-small"></div>
+                <p>Loading users...</p>
+            </div>
+        `;
+        
+        const requestData = {
+            action: 'get_users',
+            username: this.username,
+            sessionid: this.sessionId,
+            batchId: this.generateBatchId(),
+            requestId: this.generateBatchId()
+        };
+        this.sendJSON(requestData);
+    }
+
+    handleGetUsersResponse(data) {
+        if (data.status === 'success' && data.users) {
+            this.availableUsers = data.users.map(user => ({
+                login: user.login,
+                name: user.name,
+                selected: false
+            }));
+            this.selectedUsers = [];
+            this.filteredAvailableUsers = [...this.availableUsers];
+            this.filteredSelectedUsers = [];
+            this.renderUserLists();
+            this.updateCreateButtonState();
+        } else {
+            this.showToast('Failed to load users', 'error');
+            availableUsersList.innerHTML = `
+                <div class="empty-selection">
+                    <p>Failed to load users</p>
+                </div>
+            `;
+        }
+    }
+
+    renderUserLists() {
+        this.renderAvailableUsers(this.filteredAvailableUsers);
+        this.renderSelectedUsers(this.filteredSelectedUsers);
+    }
+    
+    renderAvailableUsers(users = this.availableUsers) {
+        if (users.length === 0) {
+            this.availableUsersList.innerHTML = `
+                <div class="empty-selection">
+                    <p>No users available</p>
+                </div>
+            `;
+            return;
+        }
+        
+        this.availableUsersList.innerHTML = '';
+        users.forEach(user => {
+            const userItem = document.createElement('div');
+            userItem.className = 'user-item';
+            userItem.draggable = true;
+            userItem.dataset.login = user.login;
+            
+            userItem.innerHTML = `
+                <div class="user-avatar-small">
+                    ${user.name.charAt(0).toUpperCase()}
+                </div>
+                <div class="user-info-small">
+                    <div class="user-name-small">${user.name}</div>
+                </div>
+            `;
+            
+            userItem.addEventListener('click', (e) => {
+                if (e.ctrlKey || e.metaKey) {
+                    this.toggleUserSelection(userItem, 'available');
+                } else {
+                    this.clearAllSelections('available');
+                    this.toggleUserSelection(userItem, 'available');
+                }
+            });
+            
+            // Drag and drop
+            // userItem.addEventListener('dragstart', (e) => {
+            //     e.dataTransfer.setData('text/plain', user.login);
+            //     e.dataTransfer.setData('source', 'available');
+            // });
+
+            userItem.addEventListener('dragstart', (e) => {
+                // Get all selected users in the available list
+                const selectedLogins = this.getSelectedItems('available');
+                e.dataTransfer.setData('text/plain', JSON.stringify(selectedLogins));
+                e.dataTransfer.setData('source', 'available');
+            });
+            
+            this.availableUsersList.appendChild(userItem);
+        });
+    }
+    
+    renderSelectedUsers(users = this.selectedUsers) {
+        if (users.length === 0) {
+            this.selectedUsersList.innerHTML = `
+                <div class="empty-selection">
+                    <p>No users selected</p>
+                </div>
+            `;
+            return;
+        }
+        
+        this.selectedUsersList.innerHTML = '';
+        users.forEach(user => {
+            const userItem = document.createElement('div');
+            userItem.className = 'user-item';
+            userItem.draggable = true;
+            userItem.dataset.login = user.login;
+            
+            userItem.innerHTML = `
+                <div class="user-avatar-small">
+                    ${user.name.charAt(0).toUpperCase()}
+                </div>
+                <div class="user-info-small">
+                    <div class="user-name-small">${user.name}</div>
+                </div>
+            `;
+            
+            userItem.addEventListener('click', (e) => {
+                if (e.ctrlKey || e.metaKey) {
+                    this.toggleUserSelection(userItem, 'selected');
+                } else {
+                    this.clearAllSelections('selected');
+                    this.toggleUserSelection(userItem, 'selected');
+                }
+            });
+            
+            // Drag and drop
+            // userItem.addEventListener('dragstart', (e) => {
+            //     e.dataTransfer.setData('text/plain', user.login);
+            //     e.dataTransfer.setData('source', 'selected');
+            // });
+
+            userItem.addEventListener('dragstart', (e) => {
+                // Get all selected users in the selected list
+                const selectedLogins = this.getSelectedItems('selected');
+                e.dataTransfer.setData('text/plain', JSON.stringify(selectedLogins));
+                e.dataTransfer.setData('source', 'selected');
+            });
+
+            this.selectedUsersList.appendChild(userItem);
+        });
+    }
+
+    toggleUserSelection(userItem, listType) {
+        userItem.classList.toggle('selected');
+    }
+    
+    clearAllSelections(listType) {
+        const container = listType === 'available' ? availableUsersList : selectedUsersList;
+        container.querySelectorAll('.user-item.selected').forEach(item => {
+            item.classList.remove('selected');
+        });
+    }
+
+    getSelectedItems(listType) {
+        const container = listType === 'available' ? availableUsersList : selectedUsersList;
+        return Array.from(container.querySelectorAll('.user-item.selected')).map(item => item.dataset.login);
+    }
+
+    filterUsers() {
+        const availableQuery = this.availableUsersSearch.value.toLowerCase();
+        const selectedQuery = this.selectedUsersSearch.value.toLowerCase();
+        
+        this.filteredAvailableUsers = this.availableUsers.filter(user => 
+            user.name.toLowerCase().includes(availableQuery) ||
+            user.login.toLowerCase().includes(availableQuery)
+        );
+        
+        this.filteredSelectedUsers = this.selectedUsers.filter(user => 
+            user.name.toLowerCase().includes(selectedQuery) ||
+            user.login.toLowerCase().includes(selectedQuery)
+        );
+        
+        this.renderUserLists();
+    }
+
+    moveUsersToSelected(logins) {
+        logins.forEach(login => {
+            const userIndex = this.availableUsers.findIndex(u => u.login === login);
+            if (userIndex !== -1) {
+                const user = this.availableUsers.splice(userIndex, 1)[0];
+                this.selectedUsers.push(user);
+            }
+        });
+        this.filterUsers();
+        this.renderUserLists();
+        this.updateCreateButtonState();
+    }
+
+    moveUsersToAvailable(logins) {
+        logins.forEach(login => {
+            const userIndex = this.selectedUsers.findIndex(u => u.login === login);
+            if (userIndex !== -1) {
+                const user = this.selectedUsers.splice(userIndex, 1)[0];
+                this.availableUsers.push(user);
+            }
+        });
+        this.filterUsers();
+        this.renderUserLists();
+        this.updateCreateButtonState();
     }
 
     /**

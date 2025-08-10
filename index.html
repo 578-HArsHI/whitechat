@@ -257,6 +257,98 @@
             </div>
         </div>
         
+        <!-- New Group Modal -->
+        <div id="newGroupModal" class="modal" style="display: none;">
+            <div class="modal-content new-group-modal">
+                <div class="modal-header">
+                    <h3>New Group</h3>
+                    <button id="closeNewGroupModal" class="modal-close-btn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 6L6 18M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="group-form">
+                        <div class="form-group">
+                            <label for="groupNameInput">Group Name <span class="required">*</span></label>
+                            <input type="text" id="groupNameInput" placeholder="Enter group name" required>
+                            <div id="groupNameError" class="field-error"></div>
+                        </div>
+                        
+                        <div class="users-selection">
+                            <div class="users-section">
+                                <div class="section-header">
+                                    <h4>Available Users</h4>
+                                    <div class="search-container-small">
+                                        <input type="text" id="availableUsersSearch" placeholder="Search available..." class="search-input-small">
+                                        <svg class="search-icon-small" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="11" cy="11" r="8"/>
+                                            <path d="m21 21-4.35-4.35"/>
+                                        </svg>
+                                        <button id="clearAvailableSearch" class="clear-search-small">×</button>
+                                    </div>
+                                </div>
+                                <div class="users-list" id="availableUsersList">
+                                    <div class="loading-users">
+                                        <div class="spinner-small"></div>
+                                        <p>Loading users...</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="transfer-controls">
+                                <button id="moveAllToSelected" class="transfer-btn" title="Add all to group">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>
+                                    </svg>
+                                </button>
+                                <button id="moveToSelected" class="transfer-btn" title="Add to group">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M9 18l6-6-6-6"/>
+                                    </svg>
+                                </button>
+                                <button id="removeFromSelected" class="transfer-btn" title="Remove from group">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M15 18l-6-6 6-6"/>
+                                    </svg>
+                                </button>
+                                <button id="removeAllFromSelected" class="transfer-btn" title="Remove all from group">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
+                                    </svg>
+                                </button>
+                            </div>
+                            
+                            <div class="users-section">
+                                <div class="section-header">
+                                    <h4>Selected Users</h4>
+                                    <div class="search-container-small">
+                                        <input type="text" id="selectedUsersSearch" placeholder="Search selected..." class="search-input-small">
+                                        <svg class="search-icon-small" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="11" cy="11" r="8"/>
+                                            <path d="m21 21-4.35-4.35"/>
+                                        </svg>
+                                        <button id="clearSelectedSearch" class="clear-search-small">×</button>
+                                    </div>
+                                </div>
+                                <div class="users-list" id="selectedUsersList">
+                                    <div class="empty-selection">
+                                        <p>No users selected</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="modal-actions">
+                            <button id="createGroupBtn" class="btn btn-primary" disabled>Create</button>
+                            <button id="cancelGroupBtn" class="btn btn-secondary">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <!-- Notification Panel -->
         <div id="notificationPanel" class="notification-panel">
             <div class="notification-panel-header">
