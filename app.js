@@ -742,6 +742,11 @@ class WebSocketChat {
         }
     }
 
+    handleCreateGroupResponse(create_group) {
+        // this.refreshChats()
+        this.showToast(create_group.message, 'success');
+    }
+
     /**
      * Handle login response
      */
@@ -1186,9 +1191,25 @@ class WebSocketChat {
             const updatedChat = this.chats.splice(chatIndex, 1)[0];
             this.chats.unshift(updatedChat);
             
-            this.updateChatCounts();
-            this.applyFiltersAndSearch();
+            // this.updateChatCounts();
+            // this.applyFiltersAndSearch();
+        } else {
+            // Add new chat to the top
+            const newChat = {
+                RoomId: session.RoomId,
+                MsgStr: session.MsgStr,
+                Status: session.Status,
+                MsgTxt: session.MsgTxt,
+                Unread: session.Unread,
+                ChatType: session.ChatType,
+                Name: session.Name,
+                FileName: session.FileName
+            };
+            this.chats.unshift(newChat);
         }
+    
+        this.updateChatCounts();
+        this.applyFiltersAndSearch();
     }
 
     /**
@@ -1535,7 +1556,7 @@ class WebSocketChat {
             `;
 
             chatItem.addEventListener('click', () => {
-                this.selectChat(chat.RoomId, chat.Name, isOnline);
+                this.selectChat(chat.RoomId, chat.Name);
             });
             
             this.chatList.appendChild(chatItem);
@@ -1554,7 +1575,7 @@ class WebSocketChat {
     /**
      * Select a chat
      */
-    selectChat(roomId, chatName, isOnline = false) {
+    selectChat(roomId, chatName) {
         // Clear selected files when switching conversations
         this.selectedFiles = [];
         this.renderFileList();
@@ -1615,7 +1636,14 @@ class WebSocketChat {
         this.chatStatus.textContent = message.Status;
         this.chatStatusDot.className = `chat-status-dot ${message.Status.includes('Online') ? 'online' : ''}`;
 
-        messageEl.className = `message ${isOwnMessage ? 'sent' : 'received'}`;
+        // messageEl.className = `message ${isOwnMessage ? 'sent' : 'received'}`;
+        let messageClass = 'message ';
+        if (message.User == 'system') {
+            messageClass += 'system';
+        } else {
+            messageClass += isOwnMessage ? 'sent' : 'received';
+        }
+        messageEl.className = messageClass;
         messageEl.dataset.msgId = message.MsgId;
 
         let tickHtml = '';
@@ -1754,6 +1782,9 @@ class WebSocketChat {
         this.cancelGroupBtn = document.getElementById('cancelGroupBtn');
         this.createGroupBtn = document.getElementById('createGroupBtn');
         this.groupNameInput = document.getElementById('groupNameInput');
+        this.groupNameInput?.addEventListener('input', (e) => {
+            this.updateCreateButtonState();
+        });
         this.groupNameError = document.getElementById('groupNameError');
         this.availableUsersList = document.getElementById('availableUsersList');
         this.selectedUsersList = document.getElementById('selectedUsersList');
@@ -1890,8 +1921,8 @@ class WebSocketChat {
             };
             this.sendJSON(requestData);
         }
-        // this.newGroupModal.style.display = 'none';
-        // resetGroupForm();
+        this.newGroupModal.style.display = 'none';
+        this.resetGroupForm();
     }
 
     resetGroupForm() {
@@ -1906,14 +1937,14 @@ class WebSocketChat {
         this.filteredAvailableUsers = [];
         this.filteredSelectedUsers = [];
         this.updateCreateButtonState();
-        // this.renderUserLists();
+        this.renderUserLists();
     }
 
     updateCreateButtonState() {
         const groupName = this.groupNameInput?.value.trim();
         const hasSelectedUsers = this.selectedUsers.length > 0;
         const isValid = groupName && groupName.length >= 2 && hasSelectedUsers;
-        
+        console.log('groupName', groupName, 'hasSelectedUsers', hasSelectedUsers, 'isValid', isValid);
         if (this.createGroupBtn) {
             this.createGroupBtn.disabled = !isValid;
         }
@@ -2342,6 +2373,7 @@ class WebSocketChat {
     attemptReconnect() {
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
             this.showToast('Maximum reconnection attempts reached', 'error');
+            this.handleLogout()
             return;
         }
 

@@ -1141,6 +1141,10 @@ body {
     justify-content: flex-start;
 }
 
+.message.system {
+    justify-content: center;
+}
+
 @keyframes messageSlide {
     from {
         opacity: 0;
@@ -1171,6 +1175,17 @@ body {
     color: var(--text-primary);
     border-bottom-left-radius: 6px;
     border: 1px solid var(--border-color);
+}
+
+.message.system .message-bubble {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border-radius: 18px;
+    border: 1px solid var(--border-color);
+    text-align: center;
+    font-style: italic;
+    font-size: 0.9rem;
+    max-width: 60%;
 }
 
 .message-header {
