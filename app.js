@@ -815,6 +815,7 @@ class WebSocketChat {
     handleMessagesResponse(responseData) {
         const messagesData = responseData.get_messages;
         const filesData = responseData.get_message_files;
+        const recpro = responseData.get_receiver_profile.receiver_profile[0];
         // console.log('Handling messages response:', messagesData);
 
         if (messagesData && messagesData.status == 'success') {
@@ -830,6 +831,12 @@ class WebSocketChat {
             // Update chat list with latest message info
             if (this.messages.length > 0 && this.currentRoomId) {
                 this.updateChatFromMessages(this.currentRoomId, this.messages);
+            }
+            
+            if (recpro && recpro.RoomId == this.currentRoomId) {
+                this.chatStatus.textContent = recpro.Status;
+                this.chatStatusDot.className = `chat-status-dot ${recpro.Status.includes('Online') ? 'online' : ''}`;
+                // console.log('this.chatStatus.textContent', session.Status);
             }
             
             this.renderMessages();
@@ -1632,9 +1639,6 @@ class WebSocketChat {
     createMessageElement(message) {
         const messageEl = document.createElement('div');
         const isOwnMessage = message.User == this.username;
-
-        this.chatStatus.textContent = message.Status;
-        this.chatStatusDot.className = `chat-status-dot ${message.Status.includes('Online') ? 'online' : ''}`;
 
         // messageEl.className = `message ${isOwnMessage ? 'sent' : 'received'}`;
         let messageClass = 'message ';
