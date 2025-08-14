@@ -1705,7 +1705,7 @@ class WebSocketChat {
         messageEl.innerHTML = `
             <div class="message-bubble">
                 <div class="message-header">
-                    <span class="message-username">${message.Name || message.User}</span>
+                    <span class="message-username">${message.User == 'system' ? 'OMS Chat' : (message.Name || message.User)}</span>
                     <span class="message-time">${time}</span>
                 </div>
                 ${message.MsgTxt ? `<div class="message-content">${this.escapeHtml(this.base64ToString(message.MsgTxt))}</div>` : ''}
