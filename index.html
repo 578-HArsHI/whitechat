@@ -122,13 +122,13 @@
                         <span class="tab-text">Unread</span>
                         <span class="tab-count" id="unreadCount">(0)</span>
                     </button>
+                    <button class="filter-tab" data-filter="personal">
+                        <span class="tab-text">Personal</span>
+                        <span class="tab-count" id="personalCount">(0)</span>
+                    </button>
                     <button class="filter-tab" data-filter="groups">
                         <span class="tab-text">Groups</span>
                         <span class="tab-count" id="groupsCount">(0)</span>
-                    </button>
-                    <button class="filter-tab" data-filter="online">
-                        <span class="tab-text">Online</span>
-                        <span class="tab-count" id="onlineCount">(0)</span>
                     </button>
                 </div>
 
@@ -221,6 +221,118 @@
             </div>
         </div>
 
+        <!-- Avatar Actions Modal -->
+        <div id="avatarActionsModal" class="modal" style="display: none;">
+            <div class="modal-content avatar-actions-modal">
+                <div class="avatar-actions-header">
+                    <div class="avatar-large">
+                        <span id="avatarLargeInitial"></span>
+                    </div>
+                    <h3 id="avatarUserName">User Name</h3>
+                    <p id="avatarUserContact">+91 99450 26856</p>
+                </div>
+                <div class="avatar-actions-grid">
+                    <button class="action-btn" id="audioCallBtn">
+                        <div class="action-icon audio-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                            </svg>
+                        </div>
+                        <span>Audio</span>
+                    </button>
+                    <button class="action-btn" id="videoCallBtn">
+                        <div class="action-icon video-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="23 7 16 12 23 17 23 7"/>
+                                <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                            </svg>
+                        </div>
+                        <span>Video</span>
+                    </button>
+                    <button class="action-btn" id="payBtn">
+                        <div class="action-icon pay-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                            </svg>
+                        </div>
+                        <span>Pay</span>
+                    </button>
+                    <button class="action-btn" id="searchBtn">
+                        <div class="action-icon search-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"/>
+                                <path d="m21 21-4.35-4.35"/>
+                            </svg>
+                        </div>
+                        <span>Search</span>
+                    </button>
+                </div>
+                <button id="closeAvatarModal" class="modal-close-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Chat Details Modal -->
+        <div id="chatDetailsModal" class="modal" style="display: none;">
+            <div class="modal-content chat-details-modal">
+                <div class="modal-header">
+                    <h3>Chat Details</h3>
+                    <button id="closeChatDetailsModal" class="modal-close-btn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 6L6 18M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="chat-details-content">
+                        <div class="chat-details-left">
+                            <div class="chat-details-avatar">
+                                <span id="chatDetailsAvatar"></span>
+                            </div>
+                            <h3 id="chatDetailsName">Chat Name</h3>
+                            <p id="chatDetailsContact">Contact Info</p>
+                            <div class="chat-details-actions">
+                                <button class="detail-action-btn" id="detailAudioBtn">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                                    </svg>
+                                    <span>Audio</span>
+                                </button>
+                                <button class="detail-action-btn" id="detailVideoBtn">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polygon points="23 7 16 12 23 17 23 7"/>
+                                        <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                                    </svg>
+                                    <span>Video</span>
+                                </button>
+                                <button class="detail-action-btn" id="detailSearchBtn">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="11" cy="11" r="8"/>
+                                        <path d="m21 21-4.35-4.35"/>
+                                    </svg>
+                                    <span>Search</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="chat-details-right">
+                            <div class="details-section">
+                                <h4 id="detailsSectionTitle">Group Members</h4>
+                                <div id="detailsContent" class="details-content">
+                                    <div class="loading-spinner">
+                                        <div class="spinner"></div>
+                                        <p>Loading...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <!-- Toast Container -->
         <div id="toastContainer" class="toast-container"></div>
         
