@@ -2775,6 +2775,144 @@ class WebSocketChat {
         const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
         return new TextDecoder().decode(bytes);
     }
+    
+    // Add click event to chat details
+    const chatDetails = document.querySelector('.chat-details');
+    if (chatDetails) {
+        chatDetails.removeEventListener('click', showChatDetails);
+    }
+    
+    const newChatDetails = document.querySelector('.chat-details');
+    if (newChatDetails) {
+        newChatDetails.addEventListener('click', () => showChatDetails(chat));
+    }
+    
+    // Add click event to main chat avatar
+    const mainChatAvatar = document.querySelector('.chat-avatar');
+    if (mainChatAvatar) {
+        mainChatAvatar.removeEventListener('click', showAvatarActions);
+        mainChatAvatar.addEventListener('click', () => showAvatarActions(chat));
+    }
+}
+
+// Show avatar actions modal
+function showAvatarActions(chat) {
+    const avatarLargeInitial = document.getElementById('avatarLargeInitial');
+    const avatarUserName = document.getElementById('avatarUserName');
+    const avatarUserContact = document.getElementById('avatarUserContact');
+    
+    avatarLargeInitial.textContent = getInitials(chat.name);
+    avatarUserName.textContent = chat.name;
+    avatarUserContact.textContent = chat.contact || '+91 99450 26856';
+    
+    avatarActionsModal.style.display = 'flex';
+}
+
+// Show chat details modal
+function showChatDetails(chat) {
+    const chatDetailsAvatar = document.getElementById('chatDetailsAvatar');
+    const chatDetailsName = document.getElementById('chatDetailsName');
+    const chatDetailsContact = document.getElementById('chatDetailsContact');
+    const detailsSectionTitle = document.getElementById('detailsSectionTitle');
+    const detailsContent = document.getElementById('detailsContent');
+    
+    chatDetailsAvatar.textContent = getInitials(chat.name);
+    chatDetailsName.textContent = chat.name;
+    chatDetailsContact.textContent = chat.contact || '+91 99450 26856';
+    
+    // Show loading spinner
+    detailsContent.innerHTML = `
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p>Loading...</p>
+        </div>
+    `;
+    
+    if (chat.type === 'group') {
+        detailsSectionTitle.textContent = 'Group Members';
+        // Simulate API call for group members
+        setTimeout(() => {
+            loadGroupMembers(chat.id);
+        }, 1500);
+    } else {
+        detailsSectionTitle.textContent = 'Groups in Common';
+        // Simulate API call for common groups
+        setTimeout(() => {
+            loadCommonGroups(chat.id);
+        }, 1500);
+    }
+    
+    chatDetailsModal.style.display = 'flex';
+}
+
+// Load group members
+function loadGroupMembers(chatId) {
+    const detailsContent = document.getElementById('detailsContent');
+    
+    // Simulate API response
+    const members = [
+        { id: 1, name: 'John Doe', status: 'Online', avatar: 'JD' },
+        { id: 2, name: 'Jane Smith', status: 'Last seen 2 hours ago', avatar: 'JS' },
+        { id: 3, name: 'Mike Johnson', status: 'Online', avatar: 'MJ' },
+        { id: 4, name: 'Sarah Wilson', status: 'Last seen yesterday', avatar: 'SW' },
+        { id: 5, name: 'You', status: 'Online', avatar: 'Y' }
+    ];
+    
+    if (members.length === 0) {
+        detailsContent.innerHTML = `
+            <div class="empty-details">
+                <div class="empty-details-icon">👥</div>
+                <p>Only you</p>
+            </div>
+        `;
+    } else {
+        detailsContent.innerHTML = members.map(member => `
+            <div class="member-item">
+                <div class="member-avatar">
+                    <span>${member.avatar}</span>
+                </div>
+                <div class="member-info">
+                    <div class="member-name">${member.name}</div>
+                    <div class="member-status">${member.status}</div>
+                </div>
+            </div>
+        `).join('');
+    }
+}
+
+// Load common groups
+function loadCommonGroups(chatId) {
+    const detailsContent = document.getElementById('detailsContent');
+    
+    // Simulate API response
+    const commonGroups = [
+        { id: 1, name: 'Work Team', members: '12 members', avatar: 'WT' },
+        { id: 2, name: 'Family Group', members: '8 members', avatar: 'FG' },
+        { id: 3, name: 'College Friends', members: '25 members', avatar: 'CF' },
+        { id: 4, name: 'Project Alpha', members: '6 members', avatar: 'PA' },
+        { id: 5, name: 'Weekend Plans', members: '15 members', avatar: 'WP' }
+    ];
+    
+    if (commonGroups.length === 0) {
+        detailsContent.innerHTML = `
+            <div class="empty-details">
+                <div class="empty-details-icon">👥</div>
+                <p>No groups in common</p>
+            </div>
+        `;
+    } else {
+        detailsContent.innerHTML = commonGroups.map(group => `
+            <div class="group-item">
+                <div class="group-avatar">
+                    <span>${group.avatar}</span>
+                </div>
+                <div class="group-info">
+                    <div class="group-name">${group.name}</div>
+                    <div class="group-members">${group.members}</div>
+                </div>
+            </div>
+        `).join('');
+    }
 }
 
 // Initialize the chat application when page loads
