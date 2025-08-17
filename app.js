@@ -79,6 +79,7 @@ class WebSocketChat {
         // Search and filter elements
         this.searchInput = document.getElementById('searchInput');
         this.clearSearchBtn = document.getElementById('clearSearchBtn');
+        this.clearSearchBtn.style.display = 'none';
         this.filterTabs = document.querySelectorAll('.filter-tab');
         
         // Filter count elements
@@ -616,16 +617,18 @@ class WebSocketChat {
      * Send login message to server
      */
     sendLoginMessage() {
-        const loginData = {
-            action: 'login',
-            username: this.username,
-            sessionid: this.sessionId,
-            deviceip: '127.0.0.1',
-            batchId: this.generateBatchId(),
-            requestId: this.generateBatchId()
-        };
+        if (this.username) {
+            const loginData = {
+                action: 'login',
+                username: this.username,
+                sessionid: this.sessionId,
+                deviceip: '127.0.0.1',
+                batchId: this.generateBatchId(),
+                requestId: this.generateBatchId()
+            };
 
-        this.sendJSON(loginData);
+            this.sendJSON(loginData);
+        }
     }
 
     /**
@@ -1089,7 +1092,7 @@ class WebSocketChat {
      * Handle incoming message
      */
     handleIncomingMessage(receiverData) {
-        // console.log('Handling incoming message:', receiverData);
+        console.log('handleIncomingMessage(), get_receiver_sessions');
         
         if (receiverData.receiver_sessions && receiverData.receiver_sessions.length > 0) {
             const session = receiverData.receiver_sessions[0];
@@ -1191,7 +1194,7 @@ class WebSocketChat {
             // console.log('Updating user chat with ReceiverSession:', session);
             // Only increment unread if it's not the current active chat
             if (session.RoomId != this.currentRoomId) {
-                this.chats[chatIndex].Unread = (this.chats[chatIndex].Unread || 0) + 1;
+                this.chats[chatIndex].Unread = session.Unread;
             }
             
             // Move chat to top of list
@@ -1365,7 +1368,7 @@ class WebSocketChat {
      * Update send button state
      */
     updateSendButtonState() {
-        console.log('this.messageInput.value.trim().length', this.messageInput.value.trim().length);
+        // console.log('this.messageInput.value.trim().length', this.messageInput.value.trim().length);
         const hasMessage = this.messageInput.value.trim().length > 0;
         const hasFiles = this.selectedFiles.length > 0;
         this.sendBtn.disabled = !(hasMessage || hasFiles) || !this.isConnected;
@@ -1638,7 +1641,7 @@ class WebSocketChat {
      */
     createMessageElement(message) {
         const messageEl = document.createElement('div');
-        const isOwnMessage = message.User == this.username;
+        const isOwnMessage = message.User == this.username || message.User == 'system';
 
         // messageEl.className = `message ${isOwnMessage ? 'sent' : 'received'}`;
         let messageClass = 'message ';
@@ -1948,7 +1951,7 @@ class WebSocketChat {
         const groupName = this.groupNameInput?.value.trim();
         const hasSelectedUsers = this.selectedUsers.length > 0;
         const isValid = groupName && groupName.length >= 2 && hasSelectedUsers;
-        console.log('groupName', groupName, 'hasSelectedUsers', hasSelectedUsers, 'isValid', isValid);
+        // console.log('groupName', groupName, 'hasSelectedUsers', hasSelectedUsers, 'isValid', isValid);
         if (this.createGroupBtn) {
             this.createGroupBtn.disabled = !isValid;
         }
