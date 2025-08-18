@@ -988,23 +988,37 @@ function handleAction(action) {
     if (!chat) return;
     
     let message = '';
+    let actionType = '';
+    
     switch (action) {
         case 'audio_call':
             message = `Starting audio call with ${chat.name}...`;
+            actionType = 'audio_call';
             break;
         case 'video_call':
             message = `Starting video call with ${chat.name}...`;
+            actionType = 'video_call';
             break;
         case 'pay':
             message = `Opening payment for ${chat.name}...`;
+            actionType = 'pay';
             break;
         case 'search':
             message = `Searching in ${chat.name}...`;
+            actionType = 'search';
             break;
     }
     
+    // Simulate API call with action type
+    console.log(`Action: ${actionType} for chat:`, chat);
+    
     showToast(message, 'info');
     closeAvatarActionsModal();
+    
+    // Close chat details modal if open
+    if (chatDetailsModal.style.display === 'flex') {
+        closeChatDetailsModalHandler();
+    }
 }
 
 function refreshChats() {
