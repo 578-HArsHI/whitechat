@@ -745,6 +745,15 @@ function loadGroupMembers(chat) {
     
     // Simulate API call
     setTimeout(() => {
+        if (chat.members.length === 0) {
+            detailsContent.innerHTML = `
+                <div class="empty-selection">
+                    <p>Only you</p>
+                </div>
+            `;
+            return;
+        }
+        
         const membersHtml = chat.members.map(member => `
             <div class="user-item">
                 <div class="user-avatar-small">
@@ -990,10 +999,10 @@ function handleAction(action) {
     let message = '';
     switch (action) {
         case 'audio_call':
-            message = `Starting audio call with ${chat.name}...`;
+            message = `New feature coming soon!`;
             break;
         case 'video_call':
-            message = `Starting video call with ${chat.name}...`;
+            message = `New feature coming soon!`;
             break;
         case 'pay':
             message = `Opening payment for ${chat.name}...`;
@@ -1005,6 +1014,7 @@ function handleAction(action) {
     
     showToast(message, 'info');
     closeAvatarActionsModal();
+    closeChatDetailsModalHandler();
 }
 
 function refreshChats() {
