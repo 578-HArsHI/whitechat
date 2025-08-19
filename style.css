@@ -412,6 +412,13 @@ body {
     align-items: center;
 }
 
+.search-input-icon {
+    position: absolute;
+    left: 0.75rem;
+    color: var(--text-muted);
+    z-index: 1;
+}
+
 .search-input {
     width: 100%;
     padding: 0.75rem 0.75rem 0.75rem 2.5rem;
